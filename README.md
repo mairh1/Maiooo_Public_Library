@@ -1,19 +1,5 @@
-# DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+## 许可证
 
-## Version 2, December 2004
+本项目采用 [WTFPL](http://www.wtfpl.net/) 许可证 —— 你想怎么用就怎么用。
 
-Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>
-
-Everyone is permitted to copy and distribute verbatim or modified
-copies of this license document, and changing it is allowed as long
-as the name is changed.
-
----
-
-## TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
-
-**0.** You just DO WHAT THE FUCK YOU WANT TO.
-
----
-
-> **Note:** This is a free, unencumbered software license released under the WTFPL.
+[![License: WTFPL](https://img.shields.io/badge/License-WTFPL-blue.svg)](http://www.wtfpl.net/)
