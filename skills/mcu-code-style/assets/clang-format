@@ -1,0 +1,19 @@
+# 单片机嵌入式 C 代码格式模板（mcu-code-style skill）
+# 仅覆盖 R2 格式类规则；R1 命名 / R3 注释 / R4 架构 / R5 ISR 安全由 AI 按 skill 执行
+---
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Allman
+AlwaysBreakAfterDefinitionReturnType: TopLevelDefinitions
+SortIncludes: false
+PointerAlignment: Right
+IndentCaseLabels: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AlignTrailingComments: true
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
