@@ -1,2 +1,5 @@
 # ZCode 工作产物
 .zcode/
+
+# Mimosa 安全扫描产物
+.mimosa/
