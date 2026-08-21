@@ -16,6 +16,7 @@ Public_Library/
 │   └── sort/                  # 冒泡排序算法（多类型）
 └── skills/                    # 工程技能
     ├── mcu-code-style/        # MCU C 代码规范检查与自动修复
+    ├── mcu-universal-driver/  # 通用驱动框架约束（架构 + 代码规范）
     └── mimo-editorial-image-style/   # 文生图编辑风格技能
 ```
 
@@ -28,6 +29,7 @@ Public_Library/
 - **middleware/fsm**：基于查表法的轻量级 FSM 框架，支持 entry / exit 动作与切换钩子。
 - **middleware/sort**：多类型冒泡排序（int / uint16_t / uint32_t），支持升序 / 降序与提前终止优化。
 - **skills/mcu-code-style**：MCU 嵌入式 C 代码规范检查与自动修复技能，规则与具体芯片无关。
+- **skills/mcu-universal-driver**：跨平台可移植驱动框架约束，覆盖四层架构（应用层 → 驱动核心 → 移植契约 → 移植层）与单片机 C 代码规范，与具体芯片、总线、工具链无关。
 
 ## 许可证
 
