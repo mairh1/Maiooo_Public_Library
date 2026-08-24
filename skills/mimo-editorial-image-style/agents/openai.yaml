@@ -1,4 +1,0 @@
-interface:
-  display_name: "MiMo Information Share Cards"
-  short_description: "将快讯、公告与研究摘要排成 MiMo 风格可分享信息卡片"
-  default_prompt: "使用 $mimo-editorial-image-style 把这段快讯整理成一张 MiMo 风格的竖版分享信息卡片。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "MiMo Editorial Web Pages"
+  short_description: "将快讯、公告与研究摘要排成 MiMo 风格的单文件 HTML 分享网页"
+  default_prompt: "使用 $mimo-editorial-web-style 把这段快讯整理成一个 MiMo 风格的 HTML 分享网页。"
