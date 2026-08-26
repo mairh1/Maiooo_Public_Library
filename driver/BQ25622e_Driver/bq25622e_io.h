@@ -1,7 +1,7 @@
 /**
  * @file    bq25622e_io.h
  * @brief   BQ25622E 驱动移植层 I/O 接口
- * @details 本文件作用等同 FatFS 的 diskio.h：驱动核心（bq25622e.c）只调用
+ * @details 本文件定义移植层契约：驱动核心（bq25622e.c）只调用
  *          下列函数访问硬件，不接触任何总线外设与厂商头文件。移植到新平台
  *          时仅需实现这些函数（可参考 port/bq25622e_io_template.c 模板）。
  *

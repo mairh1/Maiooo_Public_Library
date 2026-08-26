@@ -1,7 +1,7 @@
 /**
  * @file    bq25622e_conf.h
  * @brief   BQ25622E 驱动配置裁剪选项
- * @details 本文件作用等同 FatFS 的 ffconf.h：每个选项既可直接在此修改，
+ * @details 本文件是驱动的唯一配置入口：每个选项既可直接在此修改，
  *          也可通过编译命令行覆盖（如 -DBQ25622E_THREAD_SAFE=1），因为
  *          所有默认值均以 #ifndef 包裹。置 0 裁剪的功能，其相关 API 在
  *          编译期被移除（调用处返回 BQ25622E_ERR_NOT_SUPPORTED 或直接

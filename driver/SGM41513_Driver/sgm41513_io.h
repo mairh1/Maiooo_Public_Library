@@ -1,7 +1,7 @@
 /*
  * sgm41513_io.h - Platform I/O interface for the SGM41513 driver.
  *
- * This header plays the same role as diskio.h in FatFS: the driver core
+ * This header defines the porting layer contract: the driver core
  * (sgm41513.c) calls ONLY the functions below, and YOU implement them on
  * your platform. A ready-to-edit template is provided in
  * port/sgm41513_io_template.c.
@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-/* Return codes for the io functions (similar in spirit to FatFS DRESULT) */
+/* Return codes for the io functions implemented by the porting layer     */
 #define SGM41513_IO_OK      0   /* function succeeded                */
 #define SGM41513_IO_ERROR  -1   /* any communication failure         */
 

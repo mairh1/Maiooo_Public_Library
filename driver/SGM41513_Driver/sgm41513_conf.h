@@ -1,10 +1,10 @@
 /*
  * sgm41513_conf.h - Configuration options for the SGM41513 driver.
  *
- * This file plays the same role as ffconf.h in FatFS: every option can be
- * changed here directly, or overridden from the compiler command line
- * (e.g. -DSGM41513_THREAD_SAFE=1), because every default below is wrapped
- * in #ifndef.
+ * This file holds the driver's compile-time configuration: every option
+ * can be changed here directly, or overridden from the compiler command
+ * line (e.g. -DSGM41513_THREAD_SAFE=1), because every default below is
+ * wrapped in #ifndef.
  */
 
 #ifndef SGM41513_CONF_H

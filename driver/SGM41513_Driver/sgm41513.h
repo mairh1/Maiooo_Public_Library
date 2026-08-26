@@ -7,7 +7,7 @@
  *            OTG reverse boost, JEITA, ship mode.
  * Datasheet: SGM41513_SGM41513A_SGM41513D, APRIL 2025 REV. C.1
  *
- * Architecture (modeled after FatFS):
+ * Architecture (layered design):
  *
  *   +--------------------------------------+
  *   |  Application                         |   your code
@@ -48,7 +48,7 @@ extern "C" {
 #endif
 
 /* ---------------------------------------------------------------------- */
-/* Result codes (similar in spirit to FatFS FRESULT)                       */
+/* Result codes (common to every public API)                              */
 /* ---------------------------------------------------------------------- */
 
 typedef enum {
