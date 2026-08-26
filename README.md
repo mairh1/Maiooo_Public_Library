@@ -18,7 +18,7 @@ Public_Library/
 └── skills/                    # 工程技能
     ├── mcu-code-style/        # MCU C 代码规范检查与自动修复
     ├── mcu-universal-driver/  # 通用驱动框架约束（架构 + 代码规范）
-    └── mimo-editorial-image-style/   # 文生图编辑风格技能
+    └── mimo-editorial-web-style/     # 编辑排版风格网页生成技能
 ```
 
 ## 组件说明
