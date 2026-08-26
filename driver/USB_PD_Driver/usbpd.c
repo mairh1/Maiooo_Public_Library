@@ -11,8 +11,7 @@
  *          本文件为纯 C99 代码：不包含任何厂商头文件，不访问寄存器，
  *          不直接 printf，全部硬件与平台差异经 usbpd_io.h 移植接口隔离。
  * @note    依赖：usbpd.h、usbpd_io.h、string.h。不依赖任何 app / bsp
- *          层头文件。协议流程派生自 WCH CH32L103 USBPD 例程（见仓库
- *          README 许可声明）。
+ *          层头文件。
  * @author  Maiooo
  * @version 2.0.0
  * @date    2026-08-18

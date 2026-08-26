@@ -36,7 +36,7 @@ description: 单片机通用驱动框架约束——跨平台可移植驱动的�
 硬件（总线 / GPIO / 片上外设寄存器）
 ```
 
-仓库内标准范例：`driver/SGM41513_Driver/`（五件套 + port 模板 + README 分层图）、`driver/usb_pd/`（复杂协议栈的事件回调模式）。设计原理详见[架构设计详解](references/architecture.md)。
+仓库内标准范例：`driver/SGM41513_Driver/`（五件套 + port 模板 + README 分层图）、`driver/USB_PD_Driver/`（复杂协议栈的事件回调模式）。设计原理详见[架构设计详解](references/architecture.md)。
 
 ## 十条硬约束
 
@@ -168,7 +168,7 @@ description: 单片机通用驱动框架约束——跨平台可移植驱动的�
 | 宏 / 枚举值 | 全大写 | `LED_HW_COUNT` |
 | 类型（typedef） | 小写 snake_case + `_t` 后缀 | `led_state_t` |
 
-**驱动目录命名（仅芯片驱动适用）**：一颗外挂芯片对应一个驱动目录时，目录命名为 `<芯片型号>_Driver`，型号大小写与厂商数据手册 / 丝印一致，如 `SGM41513_Driver`、`BQ25622e_Driver`；该规则不适用于协议栈类组件（如 `usb_pd/`）及 middleware、skills 等其它目录——这些仍用全小写 snake_case。
+**驱动目录命名（仅芯片驱动适用）**：一颗外挂芯片对应一个驱动目录时，目录命名为 `<芯片型号>_Driver`，型号大小写与厂商数据手册 / 丝印一致，如 `SGM41513_Driver`、`BQ25622e_Driver`；该规则仅约束芯片驱动——协议栈类组件（如按协议命名的 `USB_PD_Driver/`）及 middleware、skills 等其它目录不受此限，可用全小写 snake_case 或「协议名 + `_Driver` 后缀」。
 
 检查方法：Grep 批量扫（函数定义、`^static`、全局定义等模式），不必逐文件通读。
 

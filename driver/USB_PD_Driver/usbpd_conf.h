@@ -8,7 +8,7 @@
  *          - 日志开关与日志输出重定向
  * @note    修改本文件无需改动协议核心与移植层代码。
  * @author  Maiooo
- * @version 2.0.0
+ * @version 2.0.1
  * @date    2026-08-18
  */
 
@@ -37,16 +37,20 @@
 
 #if USBPD_LOG_ENABLE
 
-#define USBPD_LOG_PRINTF(...)      printf(__VA_ARGS__)     /**< 日志输出函数，默认 printf，可重定向到串口/RTT */
-
-#include <stdio.h>
+/**
+ * @brief  日志底层输出函数（开启日志时由用户平台层实现）
+ * @param  fmt  格式串（调用点均为字符串字面量）
+ * @note   协议栈不直接依赖 printf / stdio，用户在实现中自行对接
+ *         串口、RTT 等输出通道；仅在主循环上下文被调用
+ */
+extern void usbpd_log_output(const char *fmt, ...);
 
 /**
  * @brief  协议栈日志输出宏
  * @note   仅允许在主循环上下文（USBPD_Task 内）输出，中断与协议核心
- *         不直接调用 printf，保证日志不破坏实时性
+ *         不做日志 IO，保证日志不破坏实时性
  */
-#define USBPD_LOG(fmt, ...)        USBPD_LOG_PRINTF(fmt, ##__VA_ARGS__)
+#define USBPD_LOG(fmt, ...)        usbpd_log_output(fmt, ##__VA_ARGS__)
 
 #else
 

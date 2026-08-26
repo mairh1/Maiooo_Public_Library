@@ -1,7 +1,7 @@
 /**
  * @file    usbpd_io_template.c
  * @brief   USB PD 移植层模板（移植到其他 MCU 时复制本文件实现）
- * @details 将 USB PD 协议栈移植到非 CH32L103 平台时：
+ * @details 将 USB PD 协议栈移植到目标平台时：
  *          1. 复制本文件到工程并改名为 usbpd_io_<芯片型号>.c；
  *          2. 实现 usbpd_io.h 中的全部函数（本文件即函数桩清单）；
  *          3. 不需要改动 usbpd.c / usbpd.h / usbpd_conf.h。
@@ -15,8 +15,8 @@
  *          - usbpd_io_read_packet：接收完成中断置就绪标志，本函数
  *            在任务上下文取走数据，多字节拷贝须关中断保护；
  *          - 延时函数的实际延时不得小于请求值。
- * @note    本文件不参与编译（无函数体实现为占位说明），CH32L103
- *          平台直接使用 usbpd_io_ch32l103.c，无需本模板。
+ * @note    本文件不参与编译（函数体为占位说明）；CH32L103 平台可
+ *          直接使用 examples/ch32l103/ 的现成移植，无需本模板。
  * @author  Maiooo
  * @version 2.0.0
  * @date    2026-08-18

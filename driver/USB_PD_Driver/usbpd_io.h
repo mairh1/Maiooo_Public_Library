@@ -4,7 +4,7 @@
  * @details 协议核心（usbpd.c）访问硬件的唯一通道：只调用本文件声明的
  *          函数，不接触任何寄存器与厂商头文件。将本模块移植到其他
  *          MCU 时，仅需实现这些函数（可参考 port/usbpd_io_template.c
- *          模板，或直接使用现成的 usbpd_io_ch32l103.c）。
+ *          模板，或 examples/ch32l103/ 现成移植示例）。
  *
  *          实现约束：
  *          - 所有函数须可在线程上下文调用；除 usbpd_io_phy_send 的

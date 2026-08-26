@@ -24,8 +24,9 @@
  *              +--------------------------------------+  定时 / GPIO
  *
  * @note    集成步骤：
- *          1. 移植：实现 usbpd_io.h 全部函数（或直接使用
- *             usbpd_io_ch32l103.c 现成 CH32L103 移植）；
+ *          1. 移植：实现 usbpd_io.h 全部函数（可参考 port/
+ *             usbpd_io_template.c 模板，或 examples/ch32l103/
+ *             现成移植示例）；
  *          2. 配置：按需调整 usbpd_conf.h；
  *          3. 接入：上电调用 USBPD_Init()，SysTick 1ms 中断调用
  *             USBPD_TickIsr()，主循环调用 USBPD_Task()。
@@ -55,16 +56,16 @@ typedef enum
 {
     USBPD_OK             = 0,       /**< 执行成功 */
     USBPD_ERR_IO         = 1,       /**< 移植层初始化失败 */
-    USBPD_ERR_PARAM      = 2,       /**< 参数非法（空指针 / 越界） */
-    USBPD_ERR_NOT_READY  = 3,       /**< 协议栈未初始化或状态未就绪 */
+    USBPD_ERR_PARAM      = 2,       /**< 参数非法（空指针 / 越界，预留） */
+    USBPD_ERR_NOT_READY  = 3,       /**< 协议栈未初始化或状态未就绪（预留） */
 } usbpd_result_t;
 
 /** @brief CC 线检测结果 */
 typedef enum
 {
     USBPD_CC_NONE        = 0,       /**< 无接入 */
-    USBPD_CC_LINE_1      = 1,       /**< CC1 接入（CH32L103 对应 PB6） */
-    USBPD_CC_LINE_2      = 2,       /**< CC2 接入（CH32L103 对应 PB7） */
+    USBPD_CC_LINE_1      = 1,       /**< CC1 接入（具体引脚由移植层映射） */
+    USBPD_CC_LINE_2      = 2,       /**< CC2 接入（具体引脚由移植层映射） */
 } usbpd_cc_line_t;
 
 /** @brief 协议状态机状态（对外只读，由 USBPD_Task 推进） */

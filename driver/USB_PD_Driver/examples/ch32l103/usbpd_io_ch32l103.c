@@ -11,9 +11,7 @@
  * @note    1. BMC 收发定时常量按系统主频 96MHz 计算，若主频不同需
  *          同步调整 UPD_TMR_TX_96M / UPD_TMR_RX_96M；
  *          2. 中断内 Delay_Us(30) 为 PD 规范 GoodCRC 应答窗口
- *          （约 195us 内）的硬性时序要求，不可移除；
- *          3. 寄存器位定义与参考流程派生自 WCH CH32L103 USBPD
- *          例程（见仓库 README 许可声明）。
+ *          （约 195us 内）的硬性时序要求，不可移除。
  * @author  Maiooo
  * @version 2.0.0
  * @date    2026-08-18
@@ -57,7 +55,7 @@
 
 #define MASK_PD_STAT            0x03        /**< 接收状态位掩码（STATUS[1:0]） */
 #define PD_RX_SOP0              0x01        /**< 收到 SOP' 普通报文 */
-#define BMC_AUX_INVALID         (0 << 0)    /**< BMC 辅助状态无效编码（以写 0 方式清辅助位，沿用参考实现写法） */
+#define BMC_AUX_INVALID         (0 << 0)    /**< BMC 辅助状态无效编码（以写 0 方式清辅助位） */
 
 /* ═══════════════════════════════════════════════════
  *  寄存器位定义（USBPD->PORT_CC1 / PORT_CC2）
@@ -602,6 +600,6 @@ ch32l103_phy_start_tx(const uint8_t *buf, uint8_t len, uint8_t tx_sel)
     USBPD->TX_SEL = tx_sel;
     USBPD->BMC_TX_SZ = len;
     USBPD->CONTROL |= PD_TX_EN;
-    USBPD->STATUS &= BMC_AUX_INVALID;                   /* 清 BMC 辅助状态（沿用参考实现写法） */
+    USBPD->STATUS &= BMC_AUX_INVALID;                   /* 清 BMC 辅助状态（写 0 清辅助位） */
     USBPD->CONTROL |= BMC_START;
 }
