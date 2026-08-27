@@ -1,6 +1,6 @@
 # 单片机 C 代码规范详解（S1–S4）
 
-`mcu-universal-driver` skill 的参考文档：架构约束（C1–C10）见 [SKILL.md](../SKILL.md)，本文给出代码规范的完整规则与 ❌/✅ 对照示例。示例取材自仓库项目真实代码，规则本身适用于任何 MCU 项目。
+`mcu-universal-driver` skill 的参考文档：架构约束（C1–C10）见 [SKILL.md](../SKILL.md)，本文给出代码规范的完整规则与 ❌/✅ 对照示例。示例取材自仓库项目真实代码，规则本身适用于任何 MCU 项目。本文为深度参考，与正文冲突时以正文为准。
 
 原架构类规则（include 方向、内部状态 static、分层依赖）不在此重复——已由架构约束覆盖：include 方向见 C2、模块内部状态见 C7、四层分层见 C1。
 
@@ -15,6 +15,8 @@
 | 文件级静态变量 | `s_` 前缀 | `s_led_manager` |
 | 宏 / 枚举值 | 全大写 | `LED_HW_COUNT` |
 | 类型（typedef） | 小写 snake_case + `_t` 后缀 | `led_state_t` |
+
+**驱动命名例外（重要）**：芯片 / 片上外设驱动的公共 API 与 io 契约函数一律用「模块前缀小写 snake_case」——如 `ina219_init()`、`ina219_io_read_reg()`，模块前缀为芯片型号小写；`Module_Function` 大写形式适用于应用 / 功能模块（`LED_Init()` 这类）。`_` 前缀私有头仅用于只被核心 `.c` include 的模块内部头（`_led_priv.h`）；五件套中的 `conf / regs / io` 头面向用户与移植者，不加 `_` 前缀。
 
 ### S1.1 公有函数：`Module_Function`
 
