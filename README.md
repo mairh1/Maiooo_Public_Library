@@ -11,7 +11,8 @@ Public_Library/
 │   ├── USB_PD_Driver/         # USB PD Sink 协议栈（内置 CH32L103 移植）
 │   ├── AW32257_Driver/        # AW32257 充电/升压芯片驱动
 │   ├── WM8978_Driver/         # WM8978 音频编解码芯片驱动
-│   └── MAX17048_Driver/       # MAX17048/49 电量计芯片驱动
+│   ├── MAX17048_Driver/       # MAX17048/49 电量计芯片驱动
+│   └── INA219_Driver/         # INA219 电流/功率监测芯片驱动
 ├── middleware/                # 与硬件无关的通用中间件
 │   ├── fsm/                   # 查表法有限状态机框架
 │   └── sort/                  # 冒泡排序算法（多类型）
@@ -28,6 +29,7 @@ Public_Library/
 - **driver/AW32257_Driver**：AW32257 充电/升压芯片通用驱动，ISO C99，不含厂商头文件，通过 BSP 回调接入。
 - **driver/WM8978_Driver**：WM8978 音频编解码芯片通用驱动，ISO C99，通过 I2C 接口接入。
 - **driver/MAX17048_Driver**：MAX17048/MAX17049 ModelGauge 锂电电量计通用驱动，I2C 接口（7 位地址 0x36，16 位寄存器），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
+- **driver/INA219_Driver**：INA219A/B 电流/功率监测芯片通用驱动，I2C 接口（7 位地址 0x40~0x4F，16 位寄存器），默认按 1Ω 采样电阻配置（±320mA 量程 / 10µA 分辨率），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
 - **middleware/fsm**：基于查表法的轻量级 FSM 框架，支持 entry / exit 动作与切换钩子。
 - **middleware/sort**：多类型冒泡排序（int / uint16_t / uint32_t），支持升序 / 降序与提前终止优化。
 - **skills/mcu-code-style**：MCU 嵌入式 C 代码规范检查与自动修复技能，规则与具体芯片无关。
