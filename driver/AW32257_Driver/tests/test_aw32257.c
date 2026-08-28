@@ -11,7 +11,6 @@
 #include <string.h>
 
 #include "aw32257.h"
-#include "aw32257_ch32_port_example.h"
 
 #define MOCK_LOG_CAPACITY 128U
 
@@ -44,15 +43,6 @@ typedef struct
     int32_t fail_code;
     bool safety_locked;
 } mock_bus_t;
-
-typedef struct
-{
-    uint8_t address_8bit_base;
-    uint8_t register_address;
-    uint8_t value;
-    uint32_t timeout_ms;
-    uint32_t delay_ms;
-} mock_ch32_bridge_t;
 
 static int g_failures;
 static int g_checks;
@@ -155,7 +145,7 @@ static bool mock_should_fail(mock_bus_t * bus)
            ((int32_t)bus->i2c_call_count == bus->fail_on_i2c_call);
 }
 
-static int32_t mock_read_reg(void * context,
+int32_t aw32257_io_read_reg(void * context,
                              uint8_t address_7bit,
                              uint8_t register_address,
                              uint8_t * value,
@@ -195,7 +185,7 @@ static int32_t mock_read_reg(void * context,
     return 0;
 }
 
-static int32_t mock_write_reg(void * context,
+int32_t aw32257_io_write_reg(void * context,
                               uint8_t address_7bit,
                               uint8_t register_address,
                               uint8_t value,
@@ -249,7 +239,7 @@ static int32_t mock_write_reg(void * context,
     return 0;
 }
 
-static void mock_delay_ms(void * context, uint32_t milliseconds)
+void aw32257_io_delay_ms(void * context, uint32_t milliseconds)
 {
     mock_bus_t * bus;
 
@@ -258,28 +248,14 @@ static void mock_delay_ms(void * context, uint32_t milliseconds)
     bus->now_ms += milliseconds;
 }
 
-static aw32257_port_t mock_make_port(mock_bus_t * bus)
-{
-    aw32257_port_t port;
-
-    port.read_reg = mock_read_reg;
-    port.write_reg = mock_write_reg;
-    port.delay_ms = mock_delay_ms;
-    port.context = bus;
-    port.io_timeout_ms = 25U;
-    return port;
-}
-
 static aw32257_status_t mock_prepare_ready(mock_bus_t * bus,
                                             aw32257_t * device)
 {
-    aw32257_port_t port;
     aw32257_safety_config_t safety;
     aw32257_status_t status;
 
     mock_init(bus);
-    port = mock_make_port(bus);
-    status = aw32257_bind(device, &port);
+    status = aw32257_init(device, bus, 25U);
     if (status != AW32257_OK)
     {
         return status;
@@ -290,70 +266,18 @@ static aw32257_status_t mock_prepare_ready(mock_bus_t * bus,
     return aw32257_power_on_init(device, &safety, NULL);
 }
 
-static int32_t mock_ch32_read(void * context,
-                              uint8_t address_8bit_base,
-                              uint8_t register_address,
-                              uint8_t * value,
-                              uint32_t timeout_ms)
-{
-    mock_ch32_bridge_t * bridge;
-
-    bridge = (mock_ch32_bridge_t *)context;
-    bridge->address_8bit_base = address_8bit_base;
-    bridge->register_address = register_address;
-    bridge->timeout_ms = timeout_ms;
-    *value = 0xA5U;
-    return 0;
-}
-
-static int32_t mock_ch32_write(void * context,
-                               uint8_t address_8bit_base,
-                               uint8_t register_address,
-                               uint8_t value,
-                               uint32_t timeout_ms)
-{
-    mock_ch32_bridge_t * bridge;
-
-    bridge = (mock_ch32_bridge_t *)context;
-    bridge->address_8bit_base = address_8bit_base;
-    bridge->register_address = register_address;
-    bridge->value = value;
-    bridge->timeout_ms = timeout_ms;
-    return 0;
-}
-
-static void mock_ch32_delay(void * context, uint32_t milliseconds)
-{
-    mock_ch32_bridge_t * bridge;
-
-    bridge = (mock_ch32_bridge_t *)context;
-    bridge->delay_ms += milliseconds;
-}
-
 static void test_bind_and_power_on_sequence(void)
 {
     mock_bus_t bus;
     aw32257_t device;
-    aw32257_port_t port;
-    aw32257_port_t invalid_port;
     aw32257_safety_config_t safety;
     aw32257_device_info_t info;
 
     mock_init(&bus);
-    port = mock_make_port(&bus);
-    invalid_port = port;
-    invalid_port.read_reg = NULL;
+    CHECK_EQ(AW32257_ERR_NULL_POINTER, aw32257_init(NULL, &bus, 25U));
+    CHECK_EQ(AW32257_ERR_INVALID_ARGUMENT, aw32257_init(&device, &bus, 0U));
 
-    CHECK_EQ(AW32257_ERR_NULL_POINTER, aw32257_bind(NULL, &port));
-    CHECK_EQ(AW32257_ERR_NULL_POINTER, aw32257_bind(&device, NULL));
-    CHECK_EQ(AW32257_ERR_INVALID_ARGUMENT,
-             aw32257_bind(&device, &invalid_port));
-    invalid_port = port;
-    invalid_port.io_timeout_ms = 0U;
-    CHECK_EQ(AW32257_ERR_INVALID_ARGUMENT,
-             aw32257_bind(&device, &invalid_port));
-
-    CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+    CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
     CHECK_EQ(0, bus.log_count);
     CHECK_EQ(AW32257_LIFECYCLE_BOUND, aw32257_get_lifecycle(&device));
 
@@ -364,8 +288,7 @@ static void test_bind_and_power_on_sequence(void)
              aw32257_get_lifecycle(&device));
 
     mock_init(&bus);
-    port = mock_make_port(&bus);
-    CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+    CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
     safety.max_charge_current = (aw32257_current_code_t)16;
     safety.max_charge_voltage_mv = 4240U;
     CHECK_EQ(AW32257_ERR_RANGE,
@@ -375,8 +298,7 @@ static void test_bind_and_power_on_sequence(void)
              aw32257_get_lifecycle(&device));
 
     mock_init(&bus);
-    port = mock_make_port(&bus);
-    CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+    CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
     safety.max_charge_current = AW32257_CURRENT_CODE_05;
     safety.max_charge_voltage_mv = 4210U;
     CHECK_EQ(AW32257_ERR_RANGE,
@@ -386,8 +308,7 @@ static void test_bind_and_power_on_sequence(void)
              aw32257_get_lifecycle(&device));
 
     mock_init(&bus);
-    port = mock_make_port(&bus);
-    CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+    CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
     safety.max_charge_voltage_mv = 4240U;
     CHECK_EQ(AW32257_OK,
              aw32257_power_on_init(&device, &safety, &info));
@@ -413,7 +334,6 @@ static void test_init_failures_and_future_revision(void)
 {
     mock_bus_t bus;
     aw32257_t device;
-    aw32257_port_t port;
     aw32257_safety_config_t safety;
     aw32257_device_info_t info;
     uint8_t value;
@@ -425,8 +345,7 @@ static void test_init_failures_and_future_revision(void)
 
     mock_init(&bus);
     bus.safety_locked = true;
-    port = mock_make_port(&bus);
-    CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+    CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
     CHECK_EQ(AW32257_ERR_SAFETY_MISMATCH,
              aw32257_power_on_init(&device, &safety, NULL));
     CHECK_EQ(AW32257_LIFECYCLE_POR_REQUIRED,
@@ -437,8 +356,7 @@ static void test_init_failures_and_future_revision(void)
     for (fail_index = 1; fail_index <= 3; fail_index++)
     {
         mock_init(&bus);
-        port = mock_make_port(&bus);
-        CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+        CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
         bus.fail_on_i2c_call = fail_index;
         bus.fail_code = -1234;
         CHECK_EQ(AW32257_ERR_IO,
@@ -451,8 +369,7 @@ static void test_init_failures_and_future_revision(void)
 
     mock_init(&bus);
     bus.regs[AW32257_REG_DEVICE_ID] = 0x40U;
-    port = mock_make_port(&bus);
-    CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+    CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
     CHECK_EQ(AW32257_ERR_ID_MISMATCH,
              aw32257_power_on_init(&device, &safety, NULL));
     CHECK_EQ(AW32257_LIFECYCLE_POR_REQUIRED,
@@ -462,8 +379,7 @@ static void test_init_failures_and_future_revision(void)
     {
         mock_init(&bus);
         bus.regs[AW32257_REG_DEVICE_ID] = (uint8_t)(0x50U | revision);
-        port = mock_make_port(&bus);
-        CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+        CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
         CHECK_EQ(AW32257_OK,
                  aw32257_power_on_init(&device, &safety, &info));
         CHECK_EQ(revision, info.revision_code);
@@ -474,15 +390,13 @@ static void test_safety_encodings(void)
 {
     mock_bus_t bus;
     aw32257_t device;
-    aw32257_port_t port;
     aw32257_safety_config_t safety;
     uint8_t code;
 
     for (code = 0U; code < 16U; code++)
     {
         mock_init(&bus);
-        port = mock_make_port(&bus);
-        CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+        CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
         safety.max_charge_current = (aw32257_current_code_t)code;
         safety.max_charge_voltage_mv = (uint16_t)(4200U +
                                                    ((uint16_t)code * 20U));
@@ -991,7 +905,6 @@ static void test_unready_states(void)
 {
     mock_bus_t bus;
     aw32257_t device;
-    aw32257_port_t port;
     uint8_t value;
 
     memset(&device, 0, sizeof(device));
@@ -1001,60 +914,11 @@ static void test_unready_states(void)
     CHECK_EQ(0, aw32257_get_last_port_error(NULL));
 
     mock_init(&bus);
-    port = mock_make_port(&bus);
-    CHECK_EQ(AW32257_OK, aw32257_bind(&device, &port));
+    CHECK_EQ(AW32257_OK, aw32257_init(&device, &bus, 25U));
     CHECK_EQ(AW32257_ERR_NOT_INITIALIZED,
              aw32257_read_register(&device, AW32257_REG_DEVICE_ID, &value));
 }
 
-static void test_ch32_address_bridge(void)
-{
-    mock_ch32_bridge_t bridge;
-    aw32257_ch32_port_context_t context;
-    aw32257_port_t port;
-    uint8_t value;
-
-    memset(&bridge, 0, sizeof(bridge));
-    context.board_context = &bridge;
-    context.read_reg_8bit_base = mock_ch32_read;
-    context.write_reg_8bit_base = mock_ch32_write;
-    context.delay_ms = mock_ch32_delay;
-
-    CHECK_EQ(AW32257_ERR_NULL_POINTER,
-             aw32257_ch32_make_port(NULL, &context, 10U));
-    CHECK_EQ(AW32257_ERR_INVALID_ARGUMENT,
-             aw32257_ch32_make_port(&port, &context, 0U));
-    CHECK_EQ(AW32257_OK,
-             aw32257_ch32_make_port(&port, &context, 10U));
-
-    CHECK_EQ(0,
-             port.read_reg(port.context,
-                           AW32257_I2C_ADDRESS_7BIT,
-                           AW32257_REG_DEVICE_ID,
-                           &value,
-                           port.io_timeout_ms));
-    CHECK_EQ(0xD4, bridge.address_8bit_base);
-    CHECK_EQ(AW32257_REG_DEVICE_ID, bridge.register_address);
-    CHECK_EQ(0xA5, value);
-    CHECK_EQ(10, bridge.timeout_ms);
-
-    CHECK_EQ(0,
-             port.write_reg(port.context,
-                            AW32257_I2C_ADDRESS_7BIT,
-                            AW32257_REG_CONTROL,
-                            0x5AU,
-                            port.io_timeout_ms));
-    CHECK_EQ(0xD4, bridge.address_8bit_base);
-    CHECK_EQ(0x5A, bridge.value);
-
-    port.delay_ms(port.context, AW32257_SOFT_RESET_DELAY_MS);
-    CHECK_EQ(AW32257_SOFT_RESET_DELAY_MS, bridge.delay_ms);
-    CHECK_TRUE(port.read_reg(port.context,
-                             0x6BU,
-                             AW32257_REG_DEVICE_ID,
-                             &value,
-                             port.io_timeout_ms) != 0);
-}
 
 int main(void)
 {
@@ -1068,7 +932,6 @@ int main(void)
     test_status_and_configuration_snapshots();
     test_soft_reset_ordering();
     test_unready_states();
-    test_ch32_address_bridge();
 
     if (g_failures == 0)
     {

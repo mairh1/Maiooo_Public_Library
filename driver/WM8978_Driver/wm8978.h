@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "wm8978_io.h"
 #include "wm8978_regs.h"
 
 #ifdef __cplusplus
@@ -63,38 +64,6 @@ typedef enum
     WM8978_LIFECYCLE_READY,
     WM8978_LIFECYCLE_DESYNCHRONIZED
 } wm8978_lifecycle_t;
-
-/**
- * @brief Write one already-packed 16-bit WM8978 control word.
- *
- * @param[in] context     Caller-owned adapter context.
- * @param[in] first_byte  Control bits B15:B8 (address plus data bit D8).
- * @param[in] second_byte Control bits B7:B0.
- * @param[in] timeout_ms  Non-zero upper bound for the transaction.
- *
- * In 2-wire mode, the adapter sends these two bytes to 7-bit address 0x1A
- * and must verify every ACK. In 3-wire mode, it shifts both bytes MSB first
- * and completes the CSB latch timing. Return 0 only after the whole frame has
- * completed; return a platform-defined non-zero value on timeout/NACK/error.
- * A non-zero result is allowed to have uncertain hardware side effects; the
- * core immediately enters DESYNCHRONIZED and requires reset before more RMW.
- */
-typedef int32_t (*wm8978_write_control_fn)(void * context,
-                                           uint8_t first_byte,
-                                           uint8_t second_byte,
-                                           uint32_t timeout_ms);
-
-/** @brief Delay for at least the requested number of milliseconds. */
-typedef void (*wm8978_delay_ms_fn)(void * context, uint32_t milliseconds);
-
-/** @brief Platform callbacks and their ownership contract. */
-typedef struct
-{
-    wm8978_write_control_fn write_control;
-    wm8978_delay_ms_fn delay_ms;
-    void * context;
-    uint32_t io_timeout_ms;
-} wm8978_port_t;
 
 /** @brief Digital audio serial format, matching R4 FMT encoding. */
 typedef enum
@@ -224,13 +193,16 @@ typedef enum
 /** @brief Caller-owned driver instance. Do not modify members directly. */
 typedef struct
 {
-    wm8978_port_t port;
+    void * io_ctx;
+    uint32_t io_timeout_ms;
     wm8978_lifecycle_t lifecycle;
     int32_t last_port_error;
     uint16_t shadow[WM8978_REGISTER_SPACE_SIZE];
 } wm8978_t;
 
-wm8978_status_t wm8978_bind(wm8978_t * device, const wm8978_port_t * port);
+wm8978_status_t wm8978_bind(wm8978_t * device,
+                             void * io_ctx,
+                             uint32_t io_timeout_ms);
 
 /**
  * @brief Load reset defaults without writing the control bus.

@@ -4,7 +4,7 @@
 
 ## 需要由具体 BSP 实现的三个函数
 
-应用先准备一个 `aw32257_ch32_port_context_t`：
+应用先准备一个 `aw32257_ch32_port_context_t`，并在 `aw32257_io.h` 的固定函数中将 `io_ctx` 转换为该上下文：
 
 ```c
 static aw32257_ch32_port_context_t charger_port_context =
@@ -51,7 +51,7 @@ aw32257_safety_config_t safety =
     .max_charge_voltage_mv = APP_AW32257_SAFE_VOLTAGE_MV
 };
 
-status = aw32257_ch32_bind_and_power_on_init(
+status = aw32257_ch32_init(
     &charger,
     &charger_port_context,
     APP_AW32257_IO_TIMEOUT_MS,

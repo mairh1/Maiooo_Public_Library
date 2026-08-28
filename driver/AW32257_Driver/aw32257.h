@@ -55,51 +55,7 @@ typedef enum
     AW32257_LIFECYCLE_POR_REQUIRED
 } aw32257_lifecycle_t;
 
-/**
- * @brief Read one AW32257 register.
- *
- * @param[in]  context     Caller-owned port context.
- * @param[in]  address_7bit Always @ref AW32257_I2C_ADDRESS_7BIT.
- * @param[in]  register_address Register address in the range 0x00 to 0x0A.
- * @param[out] value       Byte read from the device.
- * @param[in]  timeout_ms  Non-zero upper bound for the transaction.
- *
- * @return 0 on success; otherwise a platform-defined error code.
- */
-typedef int32_t (*aw32257_read_reg_fn)(void * context,
-                                       uint8_t address_7bit,
-                                       uint8_t register_address,
-                                       uint8_t * value,
-                                       uint32_t timeout_ms);
-
-/**
- * @brief Write one AW32257 register.
- *
- * @return 0 on success; otherwise a platform-defined error code.
- */
-typedef int32_t (*aw32257_write_reg_fn)(void * context,
-                                        uint8_t address_7bit,
-                                        uint8_t register_address,
-                                        uint8_t value,
-                                        uint32_t timeout_ms);
-
-/**
- * @brief Delay for at least the requested number of milliseconds.
- *
- * The callback is used for the mandatory 32 ms quiet interval after a
- * software-reset command. It must not return early.
- */
-typedef void (*aw32257_delay_ms_fn)(void * context, uint32_t milliseconds);
-
-/** @brief Platform callbacks and ownership contract. */
-typedef struct
-{
-    aw32257_read_reg_fn read_reg;
-    aw32257_write_reg_fn write_reg;
-    aw32257_delay_ms_fn delay_ms;
-    void * context;
-    uint32_t io_timeout_ms;
-} aw32257_port_t;
+#include "aw32257_io.h"
 
 /**
  * @brief Fast-charge and safety-current register code.
@@ -284,7 +240,8 @@ typedef struct
 /** @brief Caller-owned driver instance. */
 typedef struct
 {
-    aw32257_port_t port;
+    void * io_ctx;
+    uint32_t io_timeout_ms;
     aw32257_lifecycle_t lifecycle;
     int32_t last_port_error;
 } aw32257_t;
@@ -306,7 +263,7 @@ typedef struct
  * @param[in]  port Platform callbacks, context, and non-zero I/O timeout.
  * @return AW32257_OK or a local argument error; no port callback is invoked.
  */
-aw32257_status_t aw32257_bind(aw32257_t * device, const aw32257_port_t * port);
+aw32257_status_t aw32257_init(aw32257_t * device, void * io_ctx, uint32_t io_timeout_ms);
 
 /**
  * @brief Perform the mandatory POR-safe safety write and device check.

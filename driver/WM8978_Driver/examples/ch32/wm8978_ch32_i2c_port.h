@@ -45,11 +45,11 @@ typedef struct
     void * board_context;
 } wm8978_ch32_i2c_adapter_t;
 
-/** @brief Build a core port around the board's bounded I2C operation. */
-wm8978_status_t wm8978_ch32_i2c_make_port(
+/** @brief Bind a codec instance to the board's bounded I2C operation. */
+wm8978_status_t wm8978_ch32_i2c_bind(
+    wm8978_t * codec,
     wm8978_ch32_i2c_adapter_t * adapter,
-    uint32_t io_timeout_ms,
-    wm8978_port_t * port);
+    uint32_t io_timeout_ms);
 
 #ifdef __cplusplus
 }

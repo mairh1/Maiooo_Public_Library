@@ -111,7 +111,8 @@ Write-Host "[PASS] AW32257.pdf SHA-256"
 $corePaths = @(
     (Join-Path $projectRoot "aw32257.c"),
     (Join-Path $projectRoot "aw32257.h"),
-    (Join-Path $projectRoot "aw32257_regs.h")
+    (Join-Path $projectRoot "aw32257_regs.h"),
+    (Join-Path $projectRoot "aw32257_io.h")
 )
 $forbiddenIncludes = Select-String -Path $corePaths `
     -Pattern '#\s*include\s*[<"](?:main\.h|ch32[^>"]*|wch[^>"]*)[>"]' `
@@ -162,7 +163,6 @@ try
     $testArguments = $commonWarnings + @("-march=rv32imac_zicsr", "-mabi=ilp32") + `
         $includeArguments + @(
             (Join-Path $projectRoot "aw32257.c"),
-            (Join-Path $exampleRoot "aw32257_ch32_port_example.c"),
             (Join-Path $scriptRoot "test_aw32257.c"),
             "-o",
             $testElf

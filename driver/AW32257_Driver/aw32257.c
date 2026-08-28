@@ -9,6 +9,7 @@
  */
 
 #include "aw32257.h"
+#include "aw32257_io.h"
 
 #include <stddef.h>
 
@@ -67,11 +68,11 @@ static aw32257_status_t aw32257_port_read(aw32257_t * device,
 {
     int32_t port_status;
 
-    port_status = device->port.read_reg(device->port.context,
+    port_status = aw32257_io_read_reg(device->io_ctx,
                                         AW32257_I2C_ADDRESS_7BIT,
                                         register_address,
                                         value,
-                                        device->port.io_timeout_ms);
+                                        device->io_timeout_ms);
     device->last_port_error = port_status;
 
     if (port_status != 0)
@@ -88,11 +89,11 @@ static aw32257_status_t aw32257_port_write(aw32257_t * device,
 {
     int32_t port_status;
 
-    port_status = device->port.write_reg(device->port.context,
+    port_status = aw32257_io_write_reg(device->io_ctx,
                                          AW32257_I2C_ADDRESS_7BIT,
                                          register_address,
                                          value,
-                                         device->port.io_timeout_ms);
+                                         device->io_timeout_ms);
     device->last_port_error = port_status;
 
     if (port_status != 0)
@@ -431,23 +432,22 @@ static void aw32257_decode_boost_config(uint8_t raw_reg0a,
     config->force_pwm = (raw_reg0a & AW32257_REG0A_FORCE_PWM_MASK) != 0U;
 }
 
-aw32257_status_t aw32257_bind(aw32257_t * device,
-                               const aw32257_port_t * port)
+aw32257_status_t aw32257_init(aw32257_t * device,
+                              void * io_ctx,
+                              uint32_t io_timeout_ms)
 {
-    if ((device == NULL) || (port == NULL))
+    if (device == NULL)
     {
         return AW32257_ERR_NULL_POINTER;
     }
 
-    if ((port->read_reg == NULL) ||
-        (port->write_reg == NULL) ||
-        (port->delay_ms == NULL) ||
-        (port->io_timeout_ms == 0U))
+    if (io_timeout_ms == 0U)
     {
         return AW32257_ERR_INVALID_ARGUMENT;
     }
 
-    device->port = *port;
+    device->io_ctx = io_ctx;
+    device->io_timeout_ms = io_timeout_ms;
     device->lifecycle = AW32257_LIFECYCLE_BOUND;
     device->last_port_error = 0;
 
@@ -589,7 +589,7 @@ aw32257_status_t aw32257_soft_reset(aw32257_t * device)
                                 AW32257_REG04_SOFT_RESET_MASK);
 
     /* An ACK may be lost after the device accepted RESET, so always wait. */
-    device->port.delay_ms(device->port.context, AW32257_SOFT_RESET_DELAY_MS);
+    aw32257_io_delay_ms(device->io_ctx, AW32257_SOFT_RESET_DELAY_MS);
 
     return status;
 }

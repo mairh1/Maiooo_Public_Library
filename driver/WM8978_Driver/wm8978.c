@@ -9,6 +9,7 @@
  */
 
 #include "wm8978.h"
+#include "wm8978_io.h"
 
 #include <stddef.h>
 
@@ -265,10 +266,10 @@ static wm8978_status_t wm8978_send_control(wm8978_t * device,
         return status;
     }
 
-    port_status = device->port.write_control(device->port.context,
-                                              frame[0],
-                                              frame[1],
-                                              device->port.io_timeout_ms);
+    port_status = wm8978_io_write_control(device->io_ctx,
+                                           frame[0],
+                                           frame[1],
+                                           device->io_timeout_ms);
     device->last_port_error = port_status;
     if (port_status != 0)
     {
@@ -357,21 +358,24 @@ static wm8978_status_t wm8978_write_stereo_update(wm8978_t * device,
                                   (uint16_t)(right_value | update_bit));
 }
 
-wm8978_status_t wm8978_bind(wm8978_t * device, const wm8978_port_t * port)
+wm8978_status_t wm8978_bind(wm8978_t * device,
+                             void * io_ctx,
+                             uint32_t io_timeout_ms)
 {
     uint8_t address;
 
-    if ((device == NULL) || (port == NULL))
+    if (device == NULL)
     {
         return WM8978_ERR_NULL_POINTER;
     }
 
-    if ((port->write_control == NULL) || (port->io_timeout_ms == 0U))
+    if (io_timeout_ms == 0U)
     {
         return WM8978_ERR_INVALID_ARGUMENT;
     }
 
-    device->port = *port;
+    device->io_ctx = io_ctx;
+    device->io_timeout_ms = io_timeout_ms;
     device->lifecycle = WM8978_LIFECYCLE_BOUND;
     device->last_port_error = 0;
     for (address = 0U; address < WM8978_REGISTER_SPACE_SIZE; ++address)
@@ -1019,11 +1023,6 @@ wm8978_status_t wm8978_power_up_nonboost_out1(wm8978_t * device,
         return status;
     }
 
-    if (device->port.delay_ms == NULL)
-    {
-        return WM8978_ERR_DELAY_REQUIRED;
-    }
-
     if ((device->shadow[WM8978_REG_POWER_MANAGEMENT_1] != 0U) ||
         (device->shadow[WM8978_REG_POWER_MANAGEMENT_2] != 0U) ||
         (device->shadow[WM8978_REG_POWER_MANAGEMENT_3] != 0U))
@@ -1069,7 +1068,7 @@ wm8978_status_t wm8978_power_up_nonboost_out1(wm8978_t * device,
         return status;
     }
 
-    device->port.delay_ms(device->port.context, vmid_settle_ms);
+    wm8978_io_delay_ms(device->io_ctx, vmid_settle_ms);
 
     value = (uint16_t)(device->shadow[WM8978_REG_POWER_MANAGEMENT_1] |
                        WM8978_R01_BIASEN);

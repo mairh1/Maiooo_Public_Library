@@ -90,23 +90,25 @@ static void fake_delay(void * context, uint32_t milliseconds)
 }
 
 static wm8978_status_t make_ready(wm8978_t * codec,
-                                   fake_port_t * fake,
-                                   bool with_delay)
+                                   fake_port_t * fake)
 {
-    wm8978_status_t status;
-    wm8978_port_t port;
-
     fake_init(fake);
-    port.write_control = fake_write;
-    port.delay_ms = with_delay ? fake_delay : (wm8978_delay_ms_fn)0;
-    port.context = fake;
-    port.io_timeout_ms = 10U;
-    status = wm8978_bind(codec, &port);
-    if (status != WM8978_OK)
-    {
-        return status;
-    }
-    return wm8978_soft_reset(codec);
+    return wm8978_bind(codec, fake, 10U) == WM8978_OK
+               ? wm8978_soft_reset(codec)
+               : WM8978_ERR_INVALID_ARGUMENT;
+}
+
+int32_t wm8978_io_write_control(void * context,
+                                 uint8_t first_byte,
+                                 uint8_t second_byte,
+                                 uint32_t timeout_ms)
+{
+    return fake_write(context, first_byte, second_byte, timeout_ms);
+}
+
+void wm8978_io_delay_ms(void * context, uint32_t milliseconds)
+{
+    fake_delay(context, milliseconds);
 }
 
 static void test_register_contract(void)
@@ -147,17 +149,11 @@ static void test_register_contract(void)
 static void test_lifecycle_and_shadow(void)
 {
     wm8978_t codec;
-    wm8978_port_t port;
     fake_port_t fake;
     uint16_t value;
 
     fake_init(&fake);
-    port.write_control = fake_write;
-    port.delay_ms = fake_delay;
-    port.context = &fake;
-    port.io_timeout_ms = 10U;
-
-    CHECK(wm8978_bind(&codec, &port) == WM8978_OK);
+    CHECK(wm8978_bind(&codec, &fake, 10U) == WM8978_OK);
     CHECK(wm8978_get_lifecycle(&codec) == WM8978_LIFECYCLE_BOUND);
     CHECK(wm8978_get_shadow_register(&codec,
                                       WM8978_REG_AUDIO_INTERFACE,
@@ -183,7 +179,7 @@ static void test_write_guards_and_failure_commit(void)
     uint16_t value;
     uint32_t attempts;
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     attempts = fake.attempt_count;
     CHECK(wm8978_write_register(&codec,
                                  WM8978_REG_POWER_MANAGEMENT_3,
@@ -245,7 +241,7 @@ static void test_enum_validation(void)
     wm8978_clock_config_t clock;
     uint32_t attempts;
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     audio.format = WM8978_AUDIO_FORMAT_I2S;
     audio.word_length = WM8978_WORD_LENGTH_16_BITS;
     audio.invert_bclk = false;
@@ -290,7 +286,7 @@ static void test_audio_and_volume(void)
     uint16_t value;
     uint32_t before;
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     config.format = WM8978_AUDIO_FORMAT_I2S;
     config.word_length = WM8978_WORD_LENGTH_16_BITS;
     config.invert_bclk = false;
@@ -354,7 +350,7 @@ static void test_multiframe_failure_desynchronizes(void)
     fake_port_t fake;
     uint32_t before;
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     before = fake.attempt_count;
     fake.fail_on_attempt = before + 1U;
     fake.fail_after_frame = true;
@@ -379,7 +375,7 @@ static void test_safe_analogue_mute_clears_zero_cross(void)
     wm8978_output_volume_config_t output;
     uint16_t value;
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     output.left_volume_code = 57U;
     output.right_volume_code = 57U;
     output.mute = false;
@@ -413,7 +409,7 @@ static void test_pll_ordering(void)
     wm8978_clock_config_t clock;
     wm8978_pll_config_t pll;
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     pll.divide_mclk_by_2 = false;
     pll.n = 8U;
     pll.k = 0x3126E9UL;
@@ -458,7 +454,7 @@ static void test_eq_mode_transition_guard(void)
     uint16_t value;
     uint32_t attempts;
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     CHECK((codec.shadow[WM8978_REG_EQ1] & WM8978_R18_EQ3DMODE) != 0U);
     CHECK(wm8978_update_bits(&codec,
                               WM8978_REG_POWER_MANAGEMENT_2,
@@ -511,14 +507,13 @@ static void test_power_sequence(void)
     uint32_t attempts;
     uint32_t stage;
 
-    CHECK(make_ready(&codec, &fake, false) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     CHECK(wm8978_power_up_nonboost_out1(&codec,
                                          WM8978_VMID_5K,
-                                         500U) ==
-          WM8978_ERR_DELAY_REQUIRED);
-    CHECK(fake.frame_count == 1U);
+                                         500U) == WM8978_OK);
+    CHECK(fake.delay_count == 1U);
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     CHECK(wm8978_update_bits(&codec,
                               WM8978_REG_POWER_MANAGEMENT_2,
                               WM8978_R02_SLEEP,
@@ -529,7 +524,7 @@ static void test_power_sequence(void)
                                          500U) == WM8978_ERR_STATE);
     CHECK(fake.attempt_count == attempts);
 
-    CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+    CHECK(make_ready(&codec, &fake) == WM8978_OK);
     CHECK(wm8978_power_up_nonboost_out1(&codec,
                                          WM8978_VMID_5K,
                                          500U) == WM8978_OK);
@@ -574,7 +569,7 @@ static void test_power_sequence(void)
 
     for (stage = 0U; stage < 10U; ++stage)
     {
-        CHECK(make_ready(&codec, &fake, true) == WM8978_OK);
+        CHECK(make_ready(&codec, &fake) == WM8978_OK);
         fake.fail_on_attempt = fake.attempt_count + stage;
         fake.fail_after_frame = true;
         CHECK(wm8978_power_up_nonboost_out1(&codec,

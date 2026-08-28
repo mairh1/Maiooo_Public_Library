@@ -1,6 +1,6 @@
 /**
  * @file    aw32257_ch32_port_example.h
- * @brief   SDK-neutral CH32 BSP bridge example for the AW32257 driver
+ * @brief   SDK-neutral CH32 context example for the AW32257 driver
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-13
@@ -65,25 +65,17 @@ typedef struct
 } aw32257_ch32_port_context_t;
 
 /**
- * @brief Fill the portable port object without touching the I2C bus.
- */
-aw32257_status_t aw32257_ch32_make_port(
-    aw32257_port_t * port,
-    aw32257_ch32_port_context_t * port_context,
-    uint32_t io_timeout_ms);
-
-/**
- * @brief Convenience sequence for bind followed by POR-safe initialization.
+ * @brief Initialize an AW32257 instance with this CH32 context.
  *
- * The safety values are supplied by the application; this example deliberately
- * defines no battery or current defaults.
+ * The application must provide the fixed aw32257_io_* functions declared by
+ * aw32257_io.h; this helper only stores the opaque context and timeout.
  */
-aw32257_status_t aw32257_ch32_bind_and_power_on_init(
-    aw32257_t * device,
-    aw32257_ch32_port_context_t * port_context,
-    uint32_t io_timeout_ms,
-    const aw32257_safety_config_t * safety,
-    aw32257_device_info_t * device_info);
+aw32257_status_t aw32257_ch32_init(aw32257_t * device,
+                                   aw32257_ch32_port_context_t * port_context,
+                                   uint32_t io_timeout_ms,
+                                   const aw32257_safety_config_t * safety,
+                                   aw32257_device_info_t * device_info);
+
 
 #ifdef __cplusplus
 }

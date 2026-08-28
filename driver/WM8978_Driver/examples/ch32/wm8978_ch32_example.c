@@ -19,18 +19,11 @@ wm8978_status_t wm8978_ch32_example_init_i2s16_slave(
     uint32_t board_vmid_settle_ms)
 {
     wm8978_status_t status;
-    wm8978_port_t port;
     wm8978_audio_interface_config_t audio;
     wm8978_clock_config_t clock;
     wm8978_output_volume_config_t headphone;
 
-    status = wm8978_ch32_i2c_make_port(adapter, io_timeout_ms, &port);
-    if (status != WM8978_OK)
-    {
-        return status;
-    }
-
-    status = wm8978_bind(codec, &port);
+    status = wm8978_ch32_i2c_bind(codec, adapter, io_timeout_ms);
     if (status != WM8978_OK)
     {
         return status;

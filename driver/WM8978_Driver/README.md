@@ -1,13 +1,15 @@
 # WM8978 通用驱动
 
-这是依据仓库内 `C323850_音频接口芯片_WM8978CGEFL-RV_规格书_WJ258645.PDF`（WM8978 Production Data，Rev 4.5，2011-10）编写的可移植 C99 驱动。核心层不包含任何 CH32/WCH 头文件，可用于 ARM Cortex-M、RV32 以及其他 32 位单片机；CH32 只在端口层绑定具体 I2C、GPIO、延时和音频外设。
+这是依据仓库内 `C323850_音频接口芯片_WM8978CGEFL-RV_规格书_WJ258645.PDF`（WM8978 Production Data，Rev 4.5，2011-10）编写的可移植 C99 驱动。核心层不包含任何 CH32/WCH 头文件，可用于 ARM Cortex-M、RV32 以及其他 32 位单片机；CH32 只在移植层实现固定 IO 契约并绑定具体 I2C、GPIO、延时和音频外设。
 
 ## 文件说明
 
 | 文件 | 用途 |
 | --- | --- |
 | `wm8978_regs.h` | 52 个有效寄存器、复位值、位域与协议常量 |
-| `wm8978.h` | 平台无关公共 API、配置类型与端口契约 |
+| `wm8978.h` | 平台无关公共 API、句柄与固定 IO 契约引用 |
+| `wm8978_io.h` | 固定控制帧写入与毫秒延时移植契约 |
+| `port/wm8978_io_template.c` | 移植层实现模板 |
 | `wm8978.c` | 写控制字、影子寄存器、保留位保护及常用高层功能 |
 | `examples/ch32/wm8978_ch32_i2c_port.*` | 不绑定具体 WCH SDK 的 CH32 2-wire 适配层 |
 | `examples/ch32/wm8978_ch32_example.*` | I2S、16 位、Codec 从机、48 kHz 系数组的明确示例 |
@@ -38,7 +40,7 @@
 
 ## 控制接口接线
 
-| MODE | 控制模式 | 端口回调应完成的事务 |
+| MODE | 控制模式 | `wm8978_io_write_control()` 应完成的事务 |
 | --- | --- | --- |
 | 低 | 2-wire | 向 7 位地址 `0x1A` 写连续两个控制字节并检查全部 ACK |
 | 高 | 3-wire | CSB 有效期间按 MSB first 移出两个字节，再满足 CSB 上升沿锁存时序 |
@@ -70,7 +72,6 @@ static void board_delay_ms(void *ctx, uint32_t milliseconds);
 wm8978_status_t codec_init(void *board_i2c, uint32_t vmid_settle_ms)
 {
     wm8978_status_t status;
-    wm8978_port_t port;
     wm8978_audio_interface_config_t audio = {
         WM8978_AUDIO_FORMAT_I2S,
         WM8978_WORD_LENGTH_16_BITS,
@@ -87,9 +88,7 @@ wm8978_status_t codec_init(void *board_i2c, uint32_t vmid_settle_ms)
     codec_adapter.delay_ms = board_delay_ms;
     codec_adapter.board_context = board_i2c;
 
-    status = wm8978_ch32_i2c_make_port(&codec_adapter, 10U, &port);
-    if (status != WM8978_OK) return status;
-    status = wm8978_bind(&codec, &port);
+    status = wm8978_ch32_i2c_bind(&codec, &codec_adapter, 10U);
     if (status != WM8978_OK) return status;
     status = wm8978_soft_reset(&codec);
     if (status != WM8978_OK) return status;
@@ -115,7 +114,7 @@ wm8978_status_t codec_init(void *board_i2c, uint32_t vmid_settle_ms)
 
 WM8978 数据手册只定义写控制流程，没有普通寄存器读回事务，所以字段更新不能先读芯片再改位。本驱动采用以下规则：
 
-1. `wm8978_bind()` 后实例只有 `BOUND` 状态，普通写入会返回 `WM8978_ERR_NOT_READY`。
+1. `wm8978_bind(device, io_ctx, timeout_ms)` 后实例只有 `BOUND` 状态，普通写入会返回 `WM8978_ERR_NOT_READY`。固定契约实现 `wm8978_io_write_control()` 与 `wm8978_io_delay_ms()`，核心不再接收运行期回调结构体。
 2. 优先调用 `wm8978_soft_reset()`，写 R0 成功后载入全部数据手册复位值。
 3. 只有在板级已经确认 POR 完成时，才可用 `wm8978_assume_power_on_reset()` 跳过总线复位写入。
 4. 每次控制帧成功后才修改影子；但超时或帧末错误可能发生在芯片已经接收写入之后，所以任何端口错误都会进入 `DESYNCHRONIZED`。

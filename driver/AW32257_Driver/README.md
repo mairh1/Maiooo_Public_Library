@@ -15,6 +15,8 @@
 | 文件 | 用途 |
 | --- | --- |
 | `aw32257.h` | 公共类型、生命周期、状态及类型化 API |
+| `aw32257_io.h` | 固定平台 I/O 函数契约 |
+| `port/aw32257_io_template.c` | I/O 移植层桩模板 |
 | `aw32257.c` | 与 MCU/SDK 无关的实现 |
 | `aw32257_regs.h` | REG00–REG0A 地址、掩码、移位和复位值 |
 | `examples/ch32/` | 不绑定具体型号和 SDK 的 CH32 BSP 桥接模板 |
@@ -23,22 +25,16 @@
 
 ## 端口契约
 
-`aw32257_port_t` 保存调用方拥有的上下文、非零 I/O 超时及三个回调：
+`aw32257_io.h` 定义固定的移植契约；核心实例只保存调用方拥有的 `io_ctx` 和非零 I/O 超时。实现见 `port/aw32257_io_template.c`。
 
 ```c
-int32_t read_reg(void *context,
-                 uint8_t address_7bit,
-                 uint8_t reg,
-                 uint8_t *value,
-                 uint32_t timeout_ms);
-
-int32_t write_reg(void *context,
-                  uint8_t address_7bit,
-                  uint8_t reg,
-                  uint8_t value,
-                  uint32_t timeout_ms);
-
-void delay_ms(void *context, uint32_t milliseconds);
+int32_t aw32257_io_read_reg(void *io_ctx, uint8_t address_7bit,
+                            uint8_t reg, uint8_t *value,
+                            uint32_t timeout_ms);
+int32_t aw32257_io_write_reg(void *io_ctx, uint8_t address_7bit,
+                             uint8_t reg, uint8_t value,
+                             uint32_t timeout_ms);
+void aw32257_io_delay_ms(void *io_ctx, uint32_t milliseconds);
 ```
 
 - 读写回调返回 `0` 表示成功，其他值是平台原始错误码。
@@ -54,7 +50,7 @@ void delay_ms(void *context, uint32_t milliseconds);
 REG06 是 POR 后的一次性安全寄存器：访问其他寄存器会将其锁定，软件复位不能解锁。因此顺序不能改动：
 
 1. 执行真实硬件 POR，且在本驱动之前没有任何主机访问 AW32257。
-2. `aw32257_bind()` 只复制回调并校验本地参数，不访问 I²C。
+2. `aw32257_init()` 只保存 `io_ctx`/超时并校验本地参数，不访问 I²C。
 3. `aw32257_power_on_init()` 先在本地检查安全参数。
 4. 第一笔 I²C 操作直接写 REG06。
 5. 回读 REG06 并逐字节核对。
@@ -75,14 +71,7 @@ static aw32257_t charger;
 
 static int app_charger_start(void)
 {
-    aw32257_port_t port =
-    {
-        .read_reg = board_aw32257_read_reg,
-        .write_reg = board_aw32257_write_reg,
-        .delay_ms = board_delay_ms,
-        .context = &board_i2c_context,
-        .io_timeout_ms = APP_AW32257_IO_TIMEOUT_MS
-    };
+    void * io_ctx = &board_i2c_context;
     aw32257_safety_config_t safety =
     {
         .max_charge_current = APP_AW32257_SAFE_CURRENT_CODE,
@@ -91,7 +80,7 @@ static int app_charger_start(void)
     aw32257_device_info_t info;
     aw32257_status_t status;
 
-    status = aw32257_bind(&charger, &port);
+    status = aw32257_init(&charger, io_ctx, APP_AW32257_IO_TIMEOUT_MS);
     if (status != AW32257_OK)
     {
         return (int)status;
