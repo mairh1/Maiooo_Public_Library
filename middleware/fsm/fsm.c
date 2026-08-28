@@ -2,12 +2,14 @@
  * @file    fsm.c
  * @brief   轻量级有限状态机模块实现
  * @author  Maiooo
- * @version 2.0.0
- * @date    2026-05-07
+ * @version 3.0.0
+ * @date    2026-08-28
  *
  * @details
- * 基于查表法的状态机实现，所有公开接口均进行参数校验。
- * 支持 entry/exit 动作、状态切换钩子和状态回退。
+ * 基于查表法的状态机实现：配置与实例分离，不变配置位于 const
+ * fsm_config_t（ROM），实例仅保存配置指针与状态值。
+ * entry / exit 动作、切换钩子、上一状态记录与参数校验均可通过
+ * fsm_conf.h 编译期裁剪，全部关闭后仅剩派发与切换核心路径。
  *
  * @ingroup algo_fsm
  */
@@ -19,117 +21,89 @@
 /* ========================================================================== */
 
 /**
- * @brief 空指针快速检查宏
+ * @brief 空指针快速检查宏（FSM_CFG_PARAM_CHECK = 0 时展开为空）
  *
  * @param ptr  待检查的指针
  * @param ret  检查失败时的返回值
  */
+#if FSM_CFG_PARAM_CHECK
 #define FSM_ASSERT_PTR(ptr, ret)  do { if ((ptr) == NULL) return (ret); } while (0)
+#else
+#define FSM_ASSERT_PTR(ptr, ret)
+#endif
 
 /* ========================================================================== */
 /*  私有函数                                                                   */
 /* ========================================================================== */
 
+#if FSM_CFG_PARAM_CHECK
+
 /**
- * @brief 校验状态值是否在有效范围内
+ * @brief 校验实例与状态值是否有效
  *
- * @param[in] fsm          状态机实例（已确认非 NULL）
- * @param[in] state        待校验的状态值
+ * @param[in] fsm   状态机实例（已确认非 NULL）
+ * @param[in] state 待校验的状态值
  *
- * @retval true   状态值有效
- * @retval false  状态值 >= state_count
+ * @retval true   实例已绑定有效配置，且状态值在状态表范围内
+ * @retval false  实例未初始化或状态值越界
  */
 static bool fsm_is_state_valid(const fsm_t * fsm, uint8_t state)
 {
-    return (fsm->state_table != NULL) && (state < fsm->state_count);
+    return (fsm->config != NULL) &&
+           (fsm->config->state_table != NULL) &&
+           (state < fsm->config->state_count);
 }
+
+#endif /* FSM_CFG_PARAM_CHECK */
 
 /**
  * @brief 执行状态切换的完整流程（exit -> 切换 -> entry -> hook）
  *
- * 此函数是 fsm_set_state 和 fsm_init_ex 的内部实现，
- * 封装了状态切换时的所有动作调用逻辑。
- *
- * @param[in,out] fsm        状态机实例指针
- * @param[in]     new_state  目标状态值
+ * @param[in,out] fsm        状态机实例指针（已确认有效）
+ * @param[in]     new_state  目标状态值（已确认越界检查，或由调用方保证）
  */
 static void fsm_do_transition(fsm_t * fsm, uint8_t new_state)
 {
+#if FSM_CFG_USE_ENTRY_EXIT || FSM_CFG_USE_PREV_STATE || FSM_CFG_USE_HOOK
     uint8_t old_state = fsm->current_state;
+#endif
 
-    if (fsm->exit_table != NULL)
+#if FSM_CFG_USE_ENTRY_EXIT
+    if (fsm->config->exit_table != NULL)
     {
-        if (fsm->exit_table[old_state] != NULL)
+        fsm_state_action_t exit_action = fsm->config->exit_table[old_state];
+
+        if (exit_action != NULL)
         {
-            fsm->exit_table[old_state](fsm);
+            exit_action(fsm);
         }
     }
+#endif
 
-    fsm->prev_state    = old_state;
     fsm->current_state = new_state;
 
-    if (fsm->entry_table != NULL)
+#if FSM_CFG_USE_PREV_STATE
+    fsm->prev_state = old_state;
+#endif
+
+#if FSM_CFG_USE_ENTRY_EXIT
+    if (fsm->config->entry_table != NULL)
     {
-        if (fsm->entry_table[new_state] != NULL)
+        fsm_state_action_t entry_action = fsm->config->entry_table[new_state];
+
+        if (entry_action != NULL)
         {
-            fsm->entry_table[new_state](fsm);
+            entry_action(fsm);
         }
     }
+#endif
 
-    if (fsm->transition_hook != NULL)
+#if FSM_CFG_USE_HOOK
+    if (fsm->config->transition_hook != NULL)
     {
-        fsm->transition_hook(fsm, old_state, new_state);
+        fsm->config->transition_hook(fsm, old_state, new_state);
     }
-}
-
-/**
- * @brief 初始化状态机内部通用逻辑
- *
- * @param[out] fsm              状态机实例指针
- * @param[in]  initial_state    初始状态值
- * @param[in]  state_table      状态处理函数数组
- * @param[in]  state_count      状态表条目数
- * @param[in]  entry_table      进入动作表（可为 NULL）
- * @param[in]  exit_table       退出动作表（可为 NULL）
- * @param[in]  transition_hook  状态切换钩子（可为 NULL）
- * @param[in]  user_data        用户上下文指针（可为 NULL）
- *
- * @retval FSM_OK                 初始化成功
- * @retval FSM_ERR_NULL_PTR       fsm 或 state_table 为 NULL
- * @retval FSM_ERR_INVALID_STATE  initial_state >= state_count 或 state_count == 0
- */
-static fsm_status_t fsm_init_internal(fsm_t * fsm,
-                                       uint8_t initial_state,
-                                       const fsm_state_handler_t * state_table,
-                                       uint8_t state_count,
-                                       const fsm_state_action_t * entry_table,
-                                       const fsm_state_action_t * exit_table,
-                                       fsm_transition_hook_t transition_hook,
-                                       void * user_data)
-{
-    FSM_ASSERT_PTR(fsm,         FSM_ERR_NULL_PTR);
-    FSM_ASSERT_PTR(state_table, FSM_ERR_NULL_PTR);
-
-    if (state_count == 0)
-    {
-        return FSM_ERR_INVALID_STATE;
-    }
-
-    if (initial_state >= state_count)
-    {
-        return FSM_ERR_INVALID_STATE;
-    }
-
-    fsm->current_state    = initial_state;
-    fsm->prev_state       = initial_state;
-    fsm->state_count      = state_count;
-    fsm->state_table      = state_table;
-    fsm->entry_table      = entry_table;
-    fsm->exit_table       = exit_table;
-    fsm->transition_hook  = transition_hook;
-    fsm->user_data        = user_data;
-
-    return FSM_OK;
+#endif
 }
 
 /* ========================================================================== */
@@ -137,38 +111,44 @@ static fsm_status_t fsm_init_internal(fsm_t * fsm,
 /* ========================================================================== */
 
 fsm_status_t fsm_init(fsm_t * fsm,
-                       uint8_t initial_state,
-                       const fsm_state_handler_t * state_table,
-                       uint8_t state_count,
-                       void * user_data)
+                      const fsm_config_t * config,
+                      uint8_t initial_state)
 {
-    return fsm_init_internal(fsm, initial_state, state_table, state_count,
-                             NULL, NULL, NULL, user_data);
-}
+#if FSM_CFG_PARAM_CHECK
+    FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
+    FSM_ASSERT_PTR(config, FSM_ERR_NULL_PTR);
+    FSM_ASSERT_PTR(config->state_table, FSM_ERR_NULL_PTR);
 
-fsm_status_t fsm_init_ex(fsm_t * fsm,
-                          uint8_t initial_state,
-                          const fsm_state_handler_t * state_table,
-                          uint8_t state_count,
-                          const fsm_state_action_t * entry_table,
-                          const fsm_state_action_t * exit_table,
-                          fsm_transition_hook_t transition_hook,
-                          void * user_data)
-{
-    return fsm_init_internal(fsm, initial_state, state_table, state_count,
-                             entry_table, exit_table, transition_hook, user_data);
+    if ((config->state_count == 0) || (initial_state >= config->state_count))
+    {
+        return FSM_ERR_INVALID_STATE;
+    }
+#endif
+
+    fsm->config        = config;
+    fsm->current_state = initial_state;
+
+#if FSM_CFG_USE_PREV_STATE
+    fsm->prev_state    = initial_state;
+#endif
+
+    return FSM_OK;
 }
 
 fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event)
 {
+    fsm_state_handler_t handler;
+
+#if FSM_CFG_PARAM_CHECK
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
 
     if (!fsm_is_state_valid(fsm, fsm->current_state))
     {
         return FSM_ERR_INVALID_STATE;
     }
+#endif
 
-    fsm_state_handler_t handler = fsm->state_table[fsm->current_state];
+    handler = fsm->config->state_table[fsm->current_state];
 
     if (handler == NULL)
     {
@@ -180,52 +160,18 @@ fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event)
     return FSM_OK;
 }
 
-uint8_t fsm_get_state(const fsm_t * fsm)
-{
-    FSM_ASSERT_PTR(fsm, FSM_STATE_INVALID);
-    return fsm->current_state;
-}
-
-uint8_t fsm_get_prev_state(const fsm_t * fsm)
-{
-    FSM_ASSERT_PTR(fsm, FSM_STATE_INVALID);
-    return fsm->prev_state;
-}
-
 fsm_status_t fsm_set_state(fsm_t * fsm, uint8_t new_state)
 {
+#if FSM_CFG_PARAM_CHECK
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
 
     if (!fsm_is_state_valid(fsm, new_state))
     {
         return FSM_ERR_INVALID_STATE;
     }
+#endif
 
     fsm_do_transition(fsm, new_state);
-
-    return FSM_OK;
-}
-
-bool fsm_is_state(const fsm_t * fsm, uint8_t state)
-{
-    if (fsm == NULL)
-    {
-        return false;
-    }
-
-    return (fsm->current_state == state);
-}
-
-fsm_status_t fsm_reset(fsm_t * fsm, uint8_t initial_state)
-{
-    FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
-
-    if (fsm->state_table == NULL || initial_state >= fsm->state_count)
-    {
-        return FSM_ERR_INVALID_STATE;
-    }
-
-    fsm_do_transition(fsm, initial_state);
 
     return FSM_OK;
 }
