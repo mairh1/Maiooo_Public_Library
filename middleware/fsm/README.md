@@ -62,7 +62,7 @@ entry / exit 动作表与切换钩子的用法见 `fsm.h` 头部 Doxygen 示例�
 | `FSM_CFG_USE_ENTRY_EXIT` | 1 | `fsm_config_t` 的 `entry_table` / `exit_table` 字段、`fsm_state_action_t` 类型与切换时的动作调用 |
 | `FSM_CFG_USE_HOOK` | 1 | `transition_hook` 字段、`fsm_transition_hook_t` 类型与切换后的钩子回调 |
 | `FSM_CFG_USE_PREV_STATE` | 1 | `fsm_t` 的 `prev_state` 字段与 `fsm_get_prev_state()` API |
-| `FSM_CFG_PARAM_CHECK` | 1 | 公开 API 的空指针 / 越界校验（调用方自行保证参数合法） |
+| `FSM_CFG_PARAM_CHECK` | 1 | 可选诊断校验；空指针、配置有效性与状态边界检查始终保留 |
 
 所有宏均带 `#ifndef` 默认值，可在 `fsm_conf.h` 中修改或用编译器 `-D` 覆盖；非法取值在编译期 `#error` 报错。
 
@@ -76,7 +76,7 @@ entry / exit 动作表与切换钩子的用法见 `fsm.h` 头部 Doxygen 示例�
 | v3.0.0 全功能 | 194 B | **-40%** |
 | v3.0.0 全裁剪（4 个开关置 0） | 42 B | **-87%** |
 
-`sizeof(fsm_t)`：v2 为 24 字节 → v3 为 **8 字节（-67%）**，其中 `prev_state` 裁剪不改变对齐后的 8 字节，但配置字段全部移入 ROM。
+`sizeof(fsm_t)`：v2 为 24 字节 → v3 基础实例通常为 **8 字节**；当前版本额外保存转换重入标志，实际大小取决于目标 ABI 与对齐规则。配置字段全部移入 ROM。
 
 状态表 ROM 开销：每状态 1 个函数指针（4 字节）+ 可选 entry / exit 表各 4 字节，由用户 const 数组承担，不计入上表。
 
@@ -97,7 +97,7 @@ entry / exit 动作表与切换钩子的用法见 `fsm.h` 头部 Doxygen 示例�
 
 ## 设计约束与注意事项
 
-- **禁止嵌套转移**：entry / exit 动作与切换钩子内不得再调用 `fsm_set_state()`，嵌套会读到过期的 old / prev 状态值。
+- **禁止嵌套转移**：entry / exit 动作与切换钩子内调用 `fsm_set_state()` 会返回 `FSM_ERR_REENTRANT`，不会执行嵌套转换。
 - **同状态切换**：`fsm_set_state()` 对相同状态仍执行 exit → entry 链，需要跳过时先用 `fsm_is_state()` 自检。
 - **并发互斥**：模块不关中断、不加锁；同一实例若在 ISR 与主循环中并发访问，互斥由调用方保证。
 - **派发期间**：处理函数执行期间实例处于"转移中"，禁止其他上下文并发调用本实例的任何 API。

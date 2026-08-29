@@ -1,32 +1,32 @@
 /**
  * @file    fsm.h
- * @brief   ÇáÁ¿¼¶ÓĞÏŞ×´Ì¬»úÄ£¿éÍ·ÎÄ¼ş
+ * @brief   è½»é‡çº§æœ‰é™çŠ¶æ€æœºæ¨¡å—å¤´æ–‡ä»¶
  * @author  Maiooo
  * @version 3.0.0
  * @date    2026-08-28
  *
  * @details
- * Ìá¹©»ùÓÚ²é±í·¨µÄÓĞÏŞ×´Ì¬»ú£¨FSM£©¿ò¼Ü£¬ÊÊÓÃÓÚÇ¶ÈëÊ½³¡¾°¡£
+ * æä¾›åŸºäºæŸ¥è¡¨æ³•çš„æœ‰é™çŠ¶æ€æœºï¼ˆFSMï¼‰æ¡†æ¶ï¼Œé€‚ç”¨äºåµŒå…¥å¼åœºæ™¯ã€‚
  *
- * ºËĞÄÉè¼Æ£º
- * - ÅäÖÃÓëÊµÀı·ÖÀë£º×´Ì¬±í / ¶¯×÷±í / ¹³×Ó / ÉÏÏÂÎÄµÈ²»±äÅäÖÃ¼¯ÖĞµ½
- *   @ref fsm_config_t£¬ÓÉÓÃ»§¶¨ÒåÎª const ¶ÔÏó£¨±àÒë½ø ROM£©£»ÔËĞĞÊµÀı
- *   @ref fsm_t ½ö±£´æÅäÖÃÖ¸ÕëÓë×´Ì¬Öµ£¬32 Î»Æ½Ì¨Ô¼Õ¼ 8 ×Ö½Ú RAM
- * - ×´Ì¬´¦Àíº¯ÊıÒÔÊı×éĞÎÊ½×¢²á£¬Í¨¹ı×´Ì¬ÖµË÷Òıµ÷ÓÃ
- * - ÓÃ»§¿É×Ô¶¨Òå×´Ì¬Ã¶¾Ù£¨uint8_t ·¶Î§£©£¬Óë×´Ì¬±íÒ»Ò»¶ÔÓ¦
- * - entry / exit ¶¯×÷¡¢ÇĞ»»¹³×Ó¡¢ÉÏÒ»×´Ì¬»ØÍËÈı¸ö¿ÉÑ¡ÌØĞÔ¾ù¿ÉÍ¨¹ı
- *   fsm_conf.h ±àÒëÆÚ²Ã¼ô£¬²»Ê¹ÓÃÔòÁã´úÂë¿Õ¼ä
- * - ´¿ C99¡¢ÁãÆ½Ì¨ÒÀÀµ£ºÎŞ OS API¡¢ÎŞ¶¯Ì¬ÄÚ´æ¡¢ÎŞ¾²Ì¬È«¾Ö×´Ì¬£¬ÌìÈ»¶àÊµÀı
+ * æ ¸å¿ƒè®¾è®¡ï¼š
+ * - é…ç½®ä¸å®ä¾‹åˆ†ç¦»ï¼šçŠ¶æ€è¡¨ / åŠ¨ä½œè¡¨ / é’©å­ / ä¸Šä¸‹æ–‡ç­‰ä¸å˜é…ç½®é›†ä¸­åˆ°
+ *   @ref fsm_config_tï¼Œç”±ç”¨æˆ·å®šä¹‰ä¸º const å¯¹è±¡ï¼ˆç¼–è¯‘è¿› ROMï¼‰ï¼›è¿è¡Œå®ä¾‹
+ *   @ref fsm_t ä»…ä¿å­˜é…ç½®æŒ‡é’ˆä¸çŠ¶æ€å€¼ï¼Œ32 ä½å¹³å°çº¦å  8 å­—èŠ‚ RAM
+ * - çŠ¶æ€å¤„ç†å‡½æ•°ä»¥æ•°ç»„å½¢å¼æ³¨å†Œï¼Œé€šè¿‡çŠ¶æ€å€¼ç´¢å¼•è°ƒç”¨
+ * - ç”¨æˆ·å¯è‡ªå®šä¹‰çŠ¶æ€æšä¸¾ï¼ˆuint8_t èŒƒå›´ï¼‰ï¼Œä¸çŠ¶æ€è¡¨ä¸€ä¸€å¯¹åº”
+ * - entry / exit åŠ¨ä½œã€åˆ‡æ¢é’©å­ã€ä¸Šä¸€çŠ¶æ€å›é€€ä¸‰ä¸ªå¯é€‰ç‰¹æ€§å‡å¯é€šè¿‡
+ *   fsm_conf.h ç¼–è¯‘æœŸè£å‰ªï¼Œä¸ä½¿ç”¨åˆ™é›¶ä»£ç ç©ºé—´
+ * - çº¯ C99ã€é›¶å¹³å°ä¾èµ–ï¼šæ—  OS APIã€æ— åŠ¨æ€å†…å­˜ã€æ— é™æ€å…¨å±€çŠ¶æ€ï¼Œå¤©ç„¶å¤šå®ä¾‹
  *
  * @ingroup algo_fsm
  *
- * @par Ê¹ÓÃÊ¾Àı
+ * @par ä½¿ç”¨ç¤ºä¾‹
  * @code
- * // 1. ¶¨Òå×´Ì¬ºÍÊÂ¼şÃ¶¾Ù
+ * // 1. å®šä¹‰çŠ¶æ€å’Œäº‹ä»¶æšä¸¾
  * typedef enum { STATE_IDLE, STATE_RUN, STATE_MAX } state_t;
  * typedef enum { EVT_START, EVT_STOP, EVT_MAX } event_t;
  *
- * // 2. ±àĞ´×´Ì¬´¦Àíº¯Êı
+ * // 2. ç¼–å†™çŠ¶æ€å¤„ç†å‡½æ•°
  * static void on_idle(fsm_t * fsm, uint8_t evt)
  * {
  *     if (evt == EVT_START) { fsm_set_state(fsm, STATE_RUN); }
@@ -37,11 +37,11 @@
  *     if (evt == EVT_STOP) { fsm_set_state(fsm, STATE_IDLE); }
  * }
  *
- * // 3. ±àĞ´½øÈë/ÍË³ö¶¯×÷£¨¿ÉÑ¡£¬FSM_CFG_USE_ENTRY_EXIT = 1 Ê±´æÔÚ£©
- * static void entry_run(fsm_t * fsm) { }   // ½øÈë RUN Ê±Ö´ĞĞ
- * static void exit_run(fsm_t * fsm)  { }   // ÍË³ö RUN Ê±Ö´ĞĞ
+ * // 3. ç¼–å†™è¿›å…¥/é€€å‡ºåŠ¨ä½œï¼ˆå¯é€‰ï¼ŒFSM_CFG_USE_ENTRY_EXIT = 1 æ—¶å­˜åœ¨ï¼‰
+ * static void entry_run(fsm_t * fsm) { }   // è¿›å…¥ RUN æ—¶æ‰§è¡Œ
+ * static void exit_run(fsm_t * fsm)  { }   // é€€å‡º RUN æ—¶æ‰§è¡Œ
  *
- * // 4. ¹¹½¨×´Ì¬±íÓë¾²Ì¬ÅäÖÃ£¨const£¬±àÒë½ø ROM£©
+ * // 4. æ„å»ºçŠ¶æ€è¡¨ä¸é™æ€é…ç½®ï¼ˆconstï¼Œç¼–è¯‘è¿› ROMï¼‰
  * static const fsm_state_handler_t s_table[STATE_MAX] = {
  *     [STATE_IDLE] = on_idle,
  *     [STATE_RUN]  = on_run,
@@ -50,22 +50,22 @@
  * static const fsm_config_t s_cfg = {
  *     .state_table = s_table,
  *     .state_count = STATE_MAX,
- *     .entry_table = NULL,          // ²»Ê¹ÓÃ½øÈë¶¯×÷Ê±´« NULL
- *     .exit_table  = NULL,          // ²»Ê¹ÓÃÍË³ö¶¯×÷Ê±´« NULL
+ *     .entry_table = NULL,          // ä¸ä½¿ç”¨è¿›å…¥åŠ¨ä½œæ—¶ä¼  NULL
+ *     .exit_table  = NULL,          // ä¸ä½¿ç”¨é€€å‡ºåŠ¨ä½œæ—¶ä¼  NULL
  * };
  *
- * // 5. ¶¨ÒåÊµÀı¡¢³õÊ¼»¯²¢ÔËĞĞ
+ * // 5. å®šä¹‰å®ä¾‹ã€åˆå§‹åŒ–å¹¶è¿è¡Œ
  * static fsm_t s_fsm;
  *
  * fsm_init(&s_fsm, &s_cfg, STATE_IDLE);
- * fsm_dispatch_event(&s_fsm, EVT_START);    // ´¥·¢ IDLE -> RUN ÇĞ»»
+ * fsm_dispatch_event(&s_fsm, EVT_START);    // è§¦å‘ IDLE -> RUN åˆ‡æ¢
  * @endcode
  *
  * @attention
- * - entry / exit ¶¯×÷ÓëÇĞ»»¹³×ÓÄÚ²»µÃÔÙµ÷ÓÃ @ref fsm_set_state£¬
- *   Ç¶Ì××ªÒÆ»á¶Áµ½¹ıÆÚµÄ old / prev ×´Ì¬Öµ¡£
- * - Ä£¿é±¾Éí²»¹ØÖĞ¶Ï¡¢²»¼ÓËø£ºÍ¬Ò»ÊµÀıÈôÔÚ ISR ÓëÖ÷Ñ­»·ÖĞ²¢·¢·ÃÎÊ£¬
- *   »¥³âÓÉµ÷ÓÃ·½±£Ö¤¡£
+ * - entry / exit åŠ¨ä½œä¸åˆ‡æ¢é’©å­å†…ä¸å¾—å†è°ƒç”¨ @ref fsm_set_stateï¼›
+ *   åµŒå¥—è°ƒç”¨ä¼šè¿”å› @ref FSM_ERR_REENTRANTã€‚
+ * - æ¨¡å—æœ¬èº«ä¸å…³ä¸­æ–­ã€ä¸åŠ é”ï¼šåŒä¸€å®ä¾‹è‹¥åœ¨ ISR ä¸ä¸»å¾ªç¯ä¸­å¹¶å‘è®¿é—®ï¼Œ
+ *   äº’æ–¥ç”±è°ƒç”¨æ–¹ä¿è¯ã€‚
  */
 
 #ifndef FSM_H
@@ -82,57 +82,58 @@ extern "C" {
 #endif
 
 /* ========================================================================== */
-/*  ³£Á¿¶¨Òå                                                                   */
+/*  å¸¸é‡å®šä¹‰                                                                   */
 /* ========================================================================== */
 
 /**
- * @brief ÎŞĞ§×´Ì¬±êÊ¶·û
+ * @brief æ— æ•ˆçŠ¶æ€æ ‡è¯†ç¬¦
  *
- * ÓÃÓÚ @ref fsm_get_state / @ref fsm_get_prev_state ÔÚ´«Èë¿ÕÖ¸ÕëÊ±µÄ
- * ·µ»ØÖµ£¬±íÊ¾×´Ì¬»ú´¦ÓÚÎ´¶¨Òå×´Ì¬¡£
+ * ç”¨äº @ref fsm_get_state / @ref fsm_get_prev_state åœ¨ä¼ å…¥ç©ºæŒ‡é’ˆæ—¶çš„
+ * è¿”å›å€¼ï¼Œè¡¨ç¤ºçŠ¶æ€æœºå¤„äºæœªå®šä¹‰çŠ¶æ€ã€‚
  *
- * @attention ÓÃ»§×´Ì¬Ã¶¾Ù²»Ó¦Ê¹ÓÃ 0xFF ×÷ÎªºÏ·¨Öµ¡£
+ * @attention ç”¨æˆ·çŠ¶æ€æšä¸¾ä¸åº”ä½¿ç”¨ 0xFF ä½œä¸ºåˆæ³•å€¼ã€‚
  */
 #define FSM_STATE_INVALID   ((uint8_t)0xFF)
 
 /* ========================================================================== */
-/*  ·µ»ØÖµ¶¨Òå                                                                  */
+/*  è¿”å›å€¼å®šä¹‰                                                                  */
 /* ========================================================================== */
 
 /**
- * @brief ×´Ì¬»ú²Ù×÷·µ»ØÂë
+ * @brief çŠ¶æ€æœºæ“ä½œè¿”å›ç 
  */
 typedef enum {
-    FSM_OK                =  0,   /**< ²Ù×÷³É¹¦ */
-    FSM_ERR_NULL_PTR      = -1,   /**< ¿ÕÖ¸Õë´íÎó */
-    FSM_ERR_INVALID_STATE = -2    /**< ×´Ì¬Öµ³¬³ö×´Ì¬±í·¶Î§ */
+    FSM_OK                =  0,   /**< æ“ä½œæˆåŠŸ */
+    FSM_ERR_NULL_PTR      = -1,   /**< ç©ºæŒ‡é’ˆé”™è¯¯ */
+    FSM_ERR_INVALID_STATE = -2,   /**< çŠ¶æ€å€¼è¶…å‡ºçŠ¶æ€è¡¨èŒƒå›´ */
+    FSM_ERR_REENTRANT     = -3    /**< è½¬æ¢å›è°ƒä¸­ç¦æ­¢åµŒå¥—åˆ‡æ¢ */
 } fsm_status_t;
 
 /* ========================================================================== */
-/*  ÀàĞÍ¶¨Òå                                                                   */
+/*  ç±»å‹å®šä¹‰                                                                   */
 /* ========================================================================== */
 
-/** @brief Ç°ÏòÉùÃ÷ */
+/** @brief å‰å‘å£°æ˜ */
 typedef struct fsm_s fsm_t;
 
 /**
- * @brief ×´Ì¬´¦Àíº¯ÊıÀàĞÍ
+ * @brief çŠ¶æ€å¤„ç†å‡½æ•°ç±»å‹
  *
- * Ã¿¸ö×´Ì¬¶ÔÓ¦Ò»¸ö´¦Àíº¯Êı£¬ÊÂ¼şµ½À´Ê±ÓÉµ÷¶ÈÆ÷µ÷ÓÃ¡£
+ * æ¯ä¸ªçŠ¶æ€å¯¹åº”ä¸€ä¸ªå¤„ç†å‡½æ•°ï¼Œäº‹ä»¶åˆ°æ¥æ—¶ç”±è°ƒåº¦å™¨è°ƒç”¨ã€‚
  *
- * @param[in,out] fsm   ×´Ì¬»úÊµÀıÖ¸Õë£¨¿ÉÔÚº¯ÊıÄÚµ÷ÓÃ fsm_set_state µÈ£©
- * @param[in]     event ÊÂ¼şÖµ£¨Í¨³£À´×ÔÓÃ»§¶¨ÒåµÄÃ¶¾Ù£©
+ * @param[in,out] fsm   çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆï¼ˆå¯åœ¨å‡½æ•°å†…è°ƒç”¨ fsm_set_state ç­‰ï¼‰
+ * @param[in]     event äº‹ä»¶å€¼ï¼ˆé€šå¸¸æ¥è‡ªç”¨æˆ·å®šä¹‰çš„æšä¸¾ï¼‰
  */
 typedef void (*fsm_state_handler_t)(fsm_t * fsm, uint8_t event);
 
 #if FSM_CFG_USE_ENTRY_EXIT
 
 /**
- * @brief ×´Ì¬¶¯×÷º¯ÊıÀàĞÍ£¨FSM_CFG_USE_ENTRY_EXIT = 1 Ê±´æÔÚ£©
+ * @brief çŠ¶æ€åŠ¨ä½œå‡½æ•°ç±»å‹ï¼ˆFSM_CFG_USE_ENTRY_EXIT = 1 æ—¶å­˜åœ¨ï¼‰
  *
- * ÓÃÓÚ×´Ì¬½øÈë / ÍË³ö¶¯×÷£¬ÔÚ×´Ì¬ÇĞ»»Ê±×Ô¶¯µ÷ÓÃ¡£
+ * ç”¨äºçŠ¶æ€è¿›å…¥ / é€€å‡ºåŠ¨ä½œï¼Œåœ¨çŠ¶æ€åˆ‡æ¢æ—¶è‡ªåŠ¨è°ƒç”¨ã€‚
  *
- * @param[in,out] fsm ×´Ì¬»úÊµÀıÖ¸Õë
+ * @param[in,out] fsm çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
  */
 typedef void (*fsm_state_action_t)(fsm_t * fsm);
 
@@ -141,157 +142,155 @@ typedef void (*fsm_state_action_t)(fsm_t * fsm);
 #if FSM_CFG_USE_HOOK
 
 /**
- * @brief ×´Ì¬ÇĞ»»¹³×Óº¯ÊıÀàĞÍ£¨FSM_CFG_USE_HOOK = 1 Ê±´æÔÚ£©
+ * @brief çŠ¶æ€åˆ‡æ¢é’©å­å‡½æ•°ç±»å‹ï¼ˆFSM_CFG_USE_HOOK = 1 æ—¶å­˜åœ¨ï¼‰
  *
- * ÔÚ×´Ì¬ÇĞ»»·¢ÉúÊ±µ÷ÓÃ£¬¿ÉÓÃÓÚµ÷ÊÔ¡¢ÈÕÖ¾¼ÇÂ¼µÈ¡£
+ * åœ¨çŠ¶æ€åˆ‡æ¢å‘ç”Ÿæ—¶è°ƒç”¨ï¼Œå¯ç”¨äºè°ƒè¯•ã€æ—¥å¿—è®°å½•ç­‰ã€‚
  *
- * @param[in,out] fsm       ×´Ì¬»úÊµÀıÖ¸Õë
- * @param[in]     old_state ÇĞ»»Ç°µÄ×´Ì¬Öµ
- * @param[in]     new_state ÇĞ»»ºóµÄ×´Ì¬Öµ
+ * @param[in,out] fsm       çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
+ * @param[in]     old_state åˆ‡æ¢å‰çš„çŠ¶æ€å€¼
+ * @param[in]     new_state åˆ‡æ¢åçš„çŠ¶æ€å€¼
  */
 typedef void (*fsm_transition_hook_t)(fsm_t * fsm, uint8_t old_state, uint8_t new_state);
 
 #endif /* FSM_CFG_USE_HOOK */
 
 /**
- * @brief ×´Ì¬»ú¾²Ì¬ÅäÖÃ£¨ÓÃ»§¶¨ÒåÎª const ¶ÔÏó£¬±àÒë½ø ROM£©
+ * @brief çŠ¶æ€æœºé™æ€é…ç½®ï¼ˆç”¨æˆ·å®šä¹‰ä¸º const å¯¹è±¡ï¼Œç¼–è¯‘è¿› ROMï¼‰
  *
- * ¶àÊµÀı¿É¹²ÏíÍ¬Ò»·İÅäÖÃ£»ĞèÒª²»Í¬ user_data ÉÏÏÂÎÄµÄÊµÀı
- * Çë·Ö±ğ¶¨Òå¸÷×ÔµÄÅäÖÃ¶ÔÏó¡£
+ * å¤šå®ä¾‹å¯å…±äº«åŒä¸€ä»½é…ç½®ï¼›éœ€è¦ä¸åŒ user_data ä¸Šä¸‹æ–‡çš„å®ä¾‹
+ * è¯·åˆ†åˆ«å®šä¹‰å„è‡ªçš„é…ç½®å¯¹è±¡ã€‚
  */
 typedef struct {
-    const fsm_state_handler_t * state_table;    /**< ×´Ì¬´¦Àíº¯Êı±í£¨³¤¶ÈÎª state_count£© */
-    uint8_t state_count;                        /**< ×´Ì¬±íÌõÄ¿Êı£¨¼´×´Ì¬×ÜÊı£©           */
+    const fsm_state_handler_t * state_table;    /**< çŠ¶æ€å¤„ç†å‡½æ•°è¡¨ï¼ˆé•¿åº¦ä¸º state_countï¼‰ */
+    uint8_t state_count;                        /**< çŠ¶æ€è¡¨æ¡ç›®æ•°ï¼ˆå³çŠ¶æ€æ€»æ•°ï¼‰           */
 #if FSM_CFG_USE_ENTRY_EXIT
-    const fsm_state_action_t * entry_table;     /**< ½øÈë¶¯×÷±í£¨³¤¶ÈÎª state_count£¬¿ÉÎª NULL£© */
-    const fsm_state_action_t * exit_table;      /**< ÍË³ö¶¯×÷±í£¨³¤¶ÈÎª state_count£¬¿ÉÎª NULL£© */
+    const fsm_state_action_t * entry_table;     /**< è¿›å…¥åŠ¨ä½œè¡¨ï¼ˆé•¿åº¦ä¸º state_countï¼Œå¯ä¸º NULLï¼‰ */
+    const fsm_state_action_t * exit_table;      /**< é€€å‡ºåŠ¨ä½œè¡¨ï¼ˆé•¿åº¦ä¸º state_countï¼Œå¯ä¸º NULLï¼‰ */
 #endif
 #if FSM_CFG_USE_HOOK
-    fsm_transition_hook_t transition_hook;      /**< ×´Ì¬ÇĞ»»¹³×Ó£¨¿ÉÎª NULL£©           */
+    fsm_transition_hook_t transition_hook;      /**< çŠ¶æ€åˆ‡æ¢é’©å­ï¼ˆå¯ä¸º NULLï¼‰           */
 #endif
-    void * user_data;                           /**< ÓÃ»§Ë½ÓĞÊı¾İÖ¸Õë£¨¿ÉÎª NULL£©       */
+    void * user_data;                           /**< ç”¨æˆ·ç§æœ‰æ•°æ®æŒ‡é’ˆï¼ˆå¯ä¸º NULLï¼‰       */
 } fsm_config_t;
 
 /**
- * @brief ×´Ì¬»úÊµÀı½á¹¹Ìå
+ * @brief çŠ¶æ€æœºå®ä¾‹ç»“æ„ä½“
  *
- * ÊµÀı½ö±£´æÅäÖÃÖ¸ÕëÓëÔËĞĞ×´Ì¬£¬Ó¦ÓÃ´úÂëÓ¦Í¨¹ı API ·ÃÎÊ£¬
- * ²»ÒªÖ±½Ó¶ÁĞ´³ÉÔ±¡£
+ * å®ä¾‹ä»…ä¿å­˜é…ç½®æŒ‡é’ˆä¸è¿è¡ŒçŠ¶æ€ï¼Œåº”ç”¨ä»£ç åº”é€šè¿‡ API è®¿é—®ï¼Œ
+ * ä¸è¦ç›´æ¥è¯»å†™æˆå‘˜ã€‚
  */
 struct fsm_s {
-    const fsm_config_t * config;                /**< ¾²Ì¬ÅäÖÃÖ¸Õë£¨Í¨³£Î»ÓÚ ROM£©    */
-    uint8_t current_state;                      /**< µ±Ç°×´Ì¬Öµ£¨Ë÷Òı×´Ì¬±í£©        */
+    const fsm_config_t * config;                /**< é™æ€é…ç½®æŒ‡é’ˆï¼ˆé€šå¸¸ä½äº ROMï¼‰    */
+    uint8_t current_state;                      /**< å½“å‰çŠ¶æ€å€¼ï¼ˆç´¢å¼•çŠ¶æ€è¡¨ï¼‰        */
 #if FSM_CFG_USE_PREV_STATE
-    uint8_t prev_state;                         /**< ÉÏÒ»¸ö×´Ì¬Öµ£¨ÓÃÓÚ×´Ì¬»ØÍË£©    */
+    uint8_t prev_state;                         /**< ä¸Šä¸€ä¸ªçŠ¶æ€å€¼ï¼ˆç”¨äºçŠ¶æ€å›é€€ï¼‰    */
 #endif
+    bool transition_active;                     /**< çŠ¶æ€è½¬æ¢å›è°ƒæ˜¯å¦æ­£åœ¨æ‰§è¡Œ      */
 };
 
 /* ========================================================================== */
-/*  º¯ÊıÉùÃ÷                                                                   */
+/*  å‡½æ•°å£°æ˜                                                                   */
 /* ========================================================================== */
 
 /**
- * @brief ³õÊ¼»¯×´Ì¬»úÊµÀı
+ * @brief åˆå§‹åŒ–çŠ¶æ€æœºå®ä¾‹
  *
- * ½«×´Ì¬»ú°ó¶¨µ½¾²Ì¬ÅäÖÃ£¬²¢ÉèÖÃ³õÊ¼×´Ì¬¡£
- * ²»»á×Ô¶¯Ö´ĞĞ³õÊ¼×´Ì¬µÄ entry ¶¯×÷£¬ÈçĞèÖ´ĞĞÇëËæºóÊÖ¶¯µ÷ÓÃ¡£
+ * å°†çŠ¶æ€æœºç»‘å®šåˆ°é™æ€é…ç½®ï¼Œå¹¶è®¾ç½®åˆå§‹çŠ¶æ€ã€‚
+ * ä¸ä¼šè‡ªåŠ¨æ‰§è¡Œåˆå§‹çŠ¶æ€çš„ entry åŠ¨ä½œï¼Œå¦‚éœ€æ‰§è¡Œè¯·éšåæ‰‹åŠ¨è°ƒç”¨ã€‚
  *
- * @param[out] fsm            ×´Ì¬»úÊµÀıÖ¸Õë
- * @param[in]  config         ¾²Ì¬ÅäÖÃÖ¸Õë£¨ÉúÃüÖÜÆÚ±ØĞë¸²¸ÇÊµÀıÊ¹ÓÃÆÚ£©
- * @param[in]  initial_state  ³õÊ¼×´Ì¬Öµ£¨Ë÷Òı£¬±ØĞë < config->state_count£©
+ * @param[out] fsm            çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
+ * @param[in]  config         é™æ€é…ç½®æŒ‡é’ˆï¼ˆç”Ÿå‘½å‘¨æœŸå¿…é¡»è¦†ç›–å®ä¾‹ä½¿ç”¨æœŸï¼‰
+ * @param[in]  initial_state  åˆå§‹çŠ¶æ€å€¼ï¼ˆç´¢å¼•ï¼Œå¿…é¡» < config->state_countï¼‰
  *
- * @retval FSM_OK                 ³õÊ¼»¯³É¹¦
- * @retval FSM_ERR_NULL_PTR       fsm¡¢config »ò config->state_table Îª NULL
- * @retval FSM_ERR_INVALID_STATE  initial_state >= state_count »ò state_count == 0
+ * @retval FSM_OK                 åˆå§‹åŒ–æˆåŠŸ
+ * @retval FSM_ERR_NULL_PTR       fsmã€config æˆ– config->state_table ä¸º NULL
+ * @retval FSM_ERR_INVALID_STATE  initial_state >= state_count æˆ– state_count == 0
  *
- * @attention state_count ±ØĞëÓë×´Ì¬±íÊµ¼Ê´óĞ¡Ò»ÖÂ£¬·ñÔò±ß½ç¼ì²é½«Ê§Ğ§¡£
+ * @attention state_count å¿…é¡»ä¸çŠ¶æ€è¡¨å®é™…å¤§å°ä¸€è‡´ï¼Œå¦åˆ™è¾¹ç•Œæ£€æŸ¥å°†å¤±æ•ˆã€‚
  */
 fsm_status_t fsm_init(fsm_t * fsm,
                       const fsm_config_t * config,
                       uint8_t initial_state);
 
 /**
- * @brief ·Ö·¢ÊÂ¼şµ½µ±Ç°×´Ì¬µÄ´¦Àíº¯Êı
+ * @brief åˆ†å‘äº‹ä»¶åˆ°å½“å‰çŠ¶æ€çš„å¤„ç†å‡½æ•°
  *
- * ²éÕÒµ±Ç°×´Ì¬¶ÔÓ¦µÄ´¦Àíº¯Êı²¢µ÷ÓÃ¡£Èô´¦Àíº¯ÊıÎª NULL£¨¸Ã×´Ì¬
- * ²»´¦ÀíÈÎºÎÊÂ¼ş£©£¬·µ»Ø @ref FSM_ERR_INVALID_STATE¡£
+ * æŸ¥æ‰¾å½“å‰çŠ¶æ€å¯¹åº”çš„å¤„ç†å‡½æ•°å¹¶è°ƒç”¨ã€‚è‹¥å¤„ç†å‡½æ•°ä¸º NULLï¼ˆè¯¥çŠ¶æ€
+ * ä¸å¤„ç†ä»»ä½•äº‹ä»¶ï¼‰ï¼Œè¿”å› @ref FSM_ERR_INVALID_STATEã€‚
  *
- * @param[in,out] fsm    ×´Ì¬»úÊµÀıÖ¸Õë
- * @param[in]     event  ÊÂ¼şÖµ
+ * @param[in,out] fsm    çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
+ * @param[in]     event  äº‹ä»¶å€¼
  *
- * @retval FSM_OK                 ÊÂ¼şÒÑ´¦Àí
- * @retval FSM_ERR_NULL_PTR       fsm Îª NULL
- * @retval FSM_ERR_INVALID_STATE  ÊµÀıÎ´³õÊ¼»¯¡¢×´Ì¬Ô½½ç»òµ±Ç°×´Ì¬ÎŞ´¦Àíº¯Êı
+ * @retval FSM_OK                 äº‹ä»¶å·²å¤„ç†
+ * @retval FSM_ERR_NULL_PTR       fsm ä¸º NULL
+ * @retval FSM_ERR_INVALID_STATE  å®ä¾‹æœªåˆå§‹åŒ–ã€çŠ¶æ€è¶Šç•Œæˆ–å½“å‰çŠ¶æ€æ— å¤„ç†å‡½æ•°
  *
- * @note ×´Ì¬ÇĞ»»ÔÚ´¦Àíº¯ÊıÄÚ²¿Í¨¹ı @ref fsm_set_state Íê³É¡£
- *       ÊÂ¼şÖµµÄºÏ·¨ĞÔĞ£ÑéÓÉÓÃ»§´¦Àíº¯Êı¸ºÔğ¡£
- * @attention ´¦Àíº¯Êıµ÷ÓÃÆÚ¼äÊµÀı´¦ÓÚ"×ªÒÆÖĞ"×´Ì¬£¬½ûÖ¹ÔÚÆäËûÉÏÏÂÎÄ
- *            ²¢·¢µ÷ÓÃ±¾ÊµÀıµÄÈÎºÎ API¡£
+ * @note çŠ¶æ€åˆ‡æ¢åœ¨å¤„ç†å‡½æ•°å†…éƒ¨é€šè¿‡ @ref fsm_set_state å®Œæˆã€‚
+ *       äº‹ä»¶å€¼çš„åˆæ³•æ€§æ ¡éªŒç”±ç”¨æˆ·å¤„ç†å‡½æ•°è´Ÿè´£ã€‚
+ * @attention å¤„ç†å‡½æ•°è°ƒç”¨æœŸé—´å®ä¾‹å¤„äº"è½¬ç§»ä¸­"çŠ¶æ€ï¼Œç¦æ­¢åœ¨å…¶ä»–ä¸Šä¸‹æ–‡
+ *            å¹¶å‘è°ƒç”¨æœ¬å®ä¾‹çš„ä»»ä½• APIã€‚
  */
 fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event);
 
 /**
- * @brief Ç¿ÖÆÇĞ»»µ½Ö¸¶¨×´Ì¬
+ * @brief å¼ºåˆ¶åˆ‡æ¢åˆ°æŒ‡å®šçŠ¶æ€
  *
- * ÓÃÓÚ´íÎó»Ö¸´¡¢³õÊ¼»¯Ìø×ªµÈÌØÊâ³¡¾°¡£Èç¹ûÅäÖÃÁË entry / exit
- * ¶¯×÷±íÓëÇĞ»»¹³×Ó£¬½«×Ô¶¯Ö´ĞĞ£º
- * 1. µ÷ÓÃ¾É×´Ì¬µÄ exit ¶¯×÷£¨Èç¹û´æÔÚ£©
- * 2. ¸üĞÂ prev_state Óë current_state
- * 3. µ÷ÓÃĞÂ×´Ì¬µÄ entry ¶¯×÷£¨Èç¹û´æÔÚ£©
- * 4. µ÷ÓÃÇĞ»»¹³×Ó£¨Èç¹û´æÔÚ£©
+ * ç”¨äºé”™è¯¯æ¢å¤ã€åˆå§‹åŒ–è·³è½¬ç­‰ç‰¹æ®Šåœºæ™¯ã€‚å¦‚æœé…ç½®äº† entry / exit
+ * åŠ¨ä½œè¡¨ä¸åˆ‡æ¢é’©å­ï¼Œå°†è‡ªåŠ¨æ‰§è¡Œï¼š
+ * 1. è°ƒç”¨æ—§çŠ¶æ€çš„ exit åŠ¨ä½œï¼ˆå¦‚æœå­˜åœ¨ï¼‰
+ * 2. æ›´æ–° prev_state ä¸ current_state
+ * 3. è°ƒç”¨æ–°çŠ¶æ€çš„ entry åŠ¨ä½œï¼ˆå¦‚æœå­˜åœ¨ï¼‰
+ * 4. è°ƒç”¨åˆ‡æ¢é’©å­ï¼ˆå¦‚æœå­˜åœ¨ï¼‰
  *
- * @param[in,out] fsm        ×´Ì¬»úÊµÀıÖ¸Õë
- * @param[in]     new_state  Ä¿±ê×´Ì¬Öµ£¨±ØĞë < state_count£©
+ * @param[in,out] fsm        çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
+ * @param[in]     new_state  ç›®æ ‡çŠ¶æ€å€¼ï¼ˆå¿…é¡» < state_countï¼‰
  *
- * @retval FSM_OK                 ×´Ì¬ÒÑÇĞ»»
- * @retval FSM_ERR_NULL_PTR       fsm Îª NULL
- * @retval FSM_ERR_INVALID_STATE  ÊµÀıÎ´³õÊ¼»¯»ò new_state >= state_count
+ * @retval FSM_OK                 çŠ¶æ€å·²åˆ‡æ¢
+ * @retval FSM_ERR_NULL_PTR       fsm ä¸º NULL
+ * @retval FSM_ERR_INVALID_STATE  å®ä¾‹æœªåˆå§‹åŒ–æˆ– new_state >= state_count
+ * @retval FSM_ERR_REENTRANT      åœ¨ entry / exit / hook å›è°ƒä¸­åµŒå¥—åˆ‡æ¢
  *
- * @note Ä¿±ê×´Ì¬Óëµ±Ç°×´Ì¬ÏàÍ¬Ê±ÈÔ»áÖ´ĞĞ exit / entry ¶¯×÷Á´£¬
- *       ÈçĞèÌø¹ıÏàÍ¬×´Ì¬µÄÇĞ»»£¬ÇëÔÚµ÷ÓÃÇ°ÓÃ @ref fsm_is_state ×ÔĞĞ¼ì²é¡£
+ * @note ç›®æ ‡çŠ¶æ€ä¸å½“å‰çŠ¶æ€ç›¸åŒæ—¶ä»ä¼šæ‰§è¡Œ exit / entry åŠ¨ä½œé“¾ï¼Œ
+ *       å¦‚éœ€è·³è¿‡ç›¸åŒçŠ¶æ€çš„åˆ‡æ¢ï¼Œè¯·åœ¨è°ƒç”¨å‰ç”¨ @ref fsm_is_state è‡ªè¡Œæ£€æŸ¥ã€‚
  */
 fsm_status_t fsm_set_state(fsm_t * fsm, uint8_t new_state);
 
 /* ========================================================================== */
-/*  ÄÚÁª²éÑ¯º¯Êı£¨Áãµ÷ÓÃ¿ªÏú£©                                                   */
+/*  å†…è”æŸ¥è¯¢å‡½æ•°ï¼ˆé›¶è°ƒç”¨å¼€é”€ï¼‰                                                   */
 /* ========================================================================== */
 
 /**
- * @brief »ñÈ¡µ±Ç°×´Ì¬Öµ
+ * @brief è·å–å½“å‰çŠ¶æ€å€¼
  *
- * @param[in] fsm  ×´Ì¬»úÊµÀıÖ¸Õë
+ * @param[in] fsm  çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
  *
- * @return µ±Ç°×´Ì¬Öµ£»Èô fsm Îª NULL£¬·µ»Ø @ref FSM_STATE_INVALID¡£
+ * @return å½“å‰çŠ¶æ€å€¼ï¼›è‹¥ fsm ä¸º NULLï¼Œè¿”å› @ref FSM_STATE_INVALIDã€‚
  */
 static inline uint8_t fsm_get_state(const fsm_t * fsm)
 {
-#if FSM_CFG_PARAM_CHECK
     if (fsm == NULL)
     {
         return FSM_STATE_INVALID;
     }
-#endif
 
     return fsm->current_state;
 }
 
 /**
- * @brief ¼ì²é×´Ì¬»úÊÇ·ñ´¦ÓÚÖ¸¶¨×´Ì¬
+ * @brief æ£€æŸ¥çŠ¶æ€æœºæ˜¯å¦å¤„äºæŒ‡å®šçŠ¶æ€
  *
- * @param[in] fsm    ×´Ì¬»úÊµÀıÖ¸Õë
- * @param[in] state  ´ı¼ì²éµÄ×´Ì¬Öµ
+ * @param[in] fsm    çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
+ * @param[in] state  å¾…æ£€æŸ¥çš„çŠ¶æ€å€¼
  *
- * @retval true   µ±Ç°×´Ì¬µÈÓÚ state
- * @retval false  µ±Ç°×´Ì¬²»µÈÓÚ state£¬»ò fsm Îª NULL
+ * @retval true   å½“å‰çŠ¶æ€ç­‰äº state
+ * @retval false  å½“å‰çŠ¶æ€ä¸ç­‰äº stateï¼Œæˆ– fsm ä¸º NULL
  */
 static inline bool fsm_is_state(const fsm_t * fsm, uint8_t state)
 {
-#if FSM_CFG_PARAM_CHECK
     if (fsm == NULL)
     {
         return false;
     }
-#endif
 
     return (fsm->current_state == state);
 }
@@ -299,23 +298,21 @@ static inline bool fsm_is_state(const fsm_t * fsm, uint8_t state)
 #if FSM_CFG_USE_PREV_STATE
 
 /**
- * @brief »ñÈ¡ÉÏÒ»¸ö×´Ì¬Öµ£¨FSM_CFG_USE_PREV_STATE = 1 Ê±´æÔÚ£©
+ * @brief è·å–ä¸Šä¸€ä¸ªçŠ¶æ€å€¼ï¼ˆFSM_CFG_USE_PREV_STATE = 1 æ—¶å­˜åœ¨ï¼‰
  *
- * @param[in] fsm  ×´Ì¬»úÊµÀıÖ¸Õë
+ * @param[in] fsm  çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆ
  *
- * @return ÉÏÒ»¸ö×´Ì¬Öµ£»Èô fsm Îª NULL£¬·µ»Ø @ref FSM_STATE_INVALID¡£
- *         ³õÊ¼×´Ì¬ÏÂ prev_state µÈÓÚ initial_state¡£
+ * @return ä¸Šä¸€ä¸ªçŠ¶æ€å€¼ï¼›è‹¥ fsm ä¸º NULLï¼Œè¿”å› @ref FSM_STATE_INVALIDã€‚
+ *         åˆå§‹çŠ¶æ€ä¸‹ prev_state ç­‰äº initial_stateã€‚
  *
- * @note ¿ÉÓÃÓÚÊµÏÖ"»Øµ½ÉÏÒ»¸ö×´Ì¬"µÄÂß¼­£ºfsm_set_state(fsm, fsm_get_prev_state(fsm))¡£
+ * @note å¯ç”¨äºå®ç°"å›åˆ°ä¸Šä¸€ä¸ªçŠ¶æ€"çš„é€»è¾‘ï¼šfsm_set_state(fsm, fsm_get_prev_state(fsm))ã€‚
  */
 static inline uint8_t fsm_get_prev_state(const fsm_t * fsm)
 {
-#if FSM_CFG_PARAM_CHECK
     if (fsm == NULL)
     {
         return FSM_STATE_INVALID;
     }
-#endif
 
     return fsm->prev_state;
 }

@@ -1,15 +1,15 @@
 /**
  * @file    fsm.c
- * @brief   ÇáÁ¿¼¶ÓĞÏŞ×´Ì¬»úÄ£¿éÊµÏÖ
+ * @brief   è½»é‡çº§æœ‰é™çŠ¶æ€æœºæ¨¡å—å®ç°
  * @author  Maiooo
  * @version 3.0.0
  * @date    2026-08-28
  *
  * @details
- * »ùÓÚ²é±í·¨µÄ×´Ì¬»úÊµÏÖ£ºÅäÖÃÓëÊµÀı·ÖÀë£¬²»±äÅäÖÃÎ»ÓÚ const
- * fsm_config_t£¨ROM£©£¬ÊµÀı½ö±£´æÅäÖÃÖ¸ÕëÓë×´Ì¬Öµ¡£
- * entry / exit ¶¯×÷¡¢ÇĞ»»¹³×Ó¡¢ÉÏÒ»×´Ì¬¼ÇÂ¼Óë²ÎÊıĞ£Ñé¾ù¿ÉÍ¨¹ı
- * fsm_conf.h ±àÒëÆÚ²Ã¼ô£¬È«²¿¹Ø±Õºó½öÊ£ÅÉ·¢ÓëÇĞ»»ºËĞÄÂ·¾¶¡£
+ * åŸºäºæŸ¥è¡¨æ³•çš„çŠ¶æ€æœºå®ç°ï¼šé…ç½®ä¸å®ä¾‹åˆ†ç¦»ï¼Œä¸å˜é…ç½®ä½äº const
+ * fsm_config_tï¼ˆROMï¼‰ï¼Œå®ä¾‹ä»…ä¿å­˜é…ç½®æŒ‡é’ˆä¸çŠ¶æ€å€¼ã€‚
+ * entry / exit åŠ¨ä½œã€åˆ‡æ¢é’©å­ã€ä¸Šä¸€çŠ¶æ€è®°å½•ä¸å‚æ•°æ ¡éªŒå‡å¯é€šè¿‡
+ * fsm_conf.h ç¼–è¯‘æœŸè£å‰ªï¼Œå…¨éƒ¨å…³é—­åä»…å‰©æ´¾å‘ä¸åˆ‡æ¢æ ¸å¿ƒè·¯å¾„ã€‚
  *
  * @ingroup algo_fsm
  */
@@ -17,50 +17,43 @@
 #include "fsm.h"
 
 /* ========================================================================== */
-/*  Ë½ÓĞºê¶¨Òå                                                                 */
+/*  ç§æœ‰å®å®šä¹‰                                                                 */
 /* ========================================================================== */
 
 /**
- * @brief ¿ÕÖ¸Õë¿ìËÙ¼ì²éºê£¨FSM_CFG_PARAM_CHECK = 0 Ê±Õ¹¿ªÎª¿Õ£©
+ * @brief ç©ºæŒ‡é’ˆæ£€æŸ¥å®ï¼ˆæ‰€æœ‰é…ç½®æ¨¡å¼å‡ä¿ç•™ï¼‰
  *
- * @param ptr  ´ı¼ì²éµÄÖ¸Õë
- * @param ret  ¼ì²éÊ§°ÜÊ±µÄ·µ»ØÖµ
+ * @param ptr  å¾…æ£€æŸ¥çš„æŒ‡é’ˆ
+ * @param ret  æ£€æŸ¥å¤±è´¥æ—¶çš„è¿”å›å€¼
  */
-#if FSM_CFG_PARAM_CHECK
 #define FSM_ASSERT_PTR(ptr, ret)  do { if ((ptr) == NULL) return (ret); } while (0)
-#else
-#define FSM_ASSERT_PTR(ptr, ret)
-#endif
 
 /* ========================================================================== */
-/*  Ë½ÓĞº¯Êı                                                                   */
+/*  ç§æœ‰å‡½æ•°                                                                   */
 /* ========================================================================== */
-
-#if FSM_CFG_PARAM_CHECK
 
 /**
- * @brief Ğ£ÑéÊµÀıÓë×´Ì¬ÖµÊÇ·ñÓĞĞ§
+ * @brief æ ¡éªŒå®ä¾‹ä¸çŠ¶æ€å€¼æ˜¯å¦æœ‰æ•ˆ
  *
- * @param[in] fsm   ×´Ì¬»úÊµÀı£¨ÒÑÈ·ÈÏ·Ç NULL£©
- * @param[in] state ´ıĞ£ÑéµÄ×´Ì¬Öµ
+ * @param[in] fsm   çŠ¶æ€æœºå®ä¾‹ï¼ˆå·²ç¡®è®¤é NULLï¼‰
+ * @param[in] state å¾…æ ¡éªŒçš„çŠ¶æ€å€¼
  *
- * @retval true   ÊµÀıÒÑ°ó¶¨ÓĞĞ§ÅäÖÃ£¬ÇÒ×´Ì¬ÖµÔÚ×´Ì¬±í·¶Î§ÄÚ
- * @retval false  ÊµÀıÎ´³õÊ¼»¯»ò×´Ì¬ÖµÔ½½ç
+ * @retval true   å®ä¾‹å·²ç»‘å®šæœ‰æ•ˆé…ç½®ï¼Œä¸”çŠ¶æ€å€¼åœ¨çŠ¶æ€è¡¨èŒƒå›´å†…
+ * @retval false  å®ä¾‹æœªåˆå§‹åŒ–æˆ–çŠ¶æ€å€¼è¶Šç•Œ
  */
 static bool fsm_is_state_valid(const fsm_t * fsm, uint8_t state)
 {
     return (fsm->config != NULL) &&
            (fsm->config->state_table != NULL) &&
+           (fsm->config->state_count != 0) &&
            (state < fsm->config->state_count);
 }
 
-#endif /* FSM_CFG_PARAM_CHECK */
-
 /**
- * @brief Ö´ĞĞ×´Ì¬ÇĞ»»µÄÍêÕûÁ÷³Ì£¨exit -> ÇĞ»» -> entry -> hook£©
+ * @brief æ‰§è¡ŒçŠ¶æ€åˆ‡æ¢çš„å®Œæ•´æµç¨‹ï¼ˆexit -> åˆ‡æ¢ -> entry -> hookï¼‰
  *
- * @param[in,out] fsm        ×´Ì¬»úÊµÀıÖ¸Õë£¨ÒÑÈ·ÈÏÓĞĞ§£©
- * @param[in]     new_state  Ä¿±ê×´Ì¬Öµ£¨ÒÑÈ·ÈÏÔ½½ç¼ì²é£¬»òÓÉµ÷ÓÃ·½±£Ö¤£©
+ * @param[in,out] fsm        çŠ¶æ€æœºå®ä¾‹æŒ‡é’ˆï¼ˆå·²ç¡®è®¤æœ‰æ•ˆï¼‰
+ * @param[in]     new_state  ç›®æ ‡çŠ¶æ€å€¼ï¼ˆå·²ç¡®è®¤è¶Šç•Œæ£€æŸ¥ï¼Œæˆ–ç”±è°ƒç”¨æ–¹ä¿è¯ï¼‰
  */
 static void fsm_do_transition(fsm_t * fsm, uint8_t new_state)
 {
@@ -107,14 +100,13 @@ static void fsm_do_transition(fsm_t * fsm, uint8_t new_state)
 }
 
 /* ========================================================================== */
-/*  ¹«¿ª½Ó¿Úº¯Êı                                                                */
+/*  å…¬å¼€æ¥å£å‡½æ•°                                                                */
 /* ========================================================================== */
 
 fsm_status_t fsm_init(fsm_t * fsm,
                       const fsm_config_t * config,
                       uint8_t initial_state)
 {
-#if FSM_CFG_PARAM_CHECK
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
     FSM_ASSERT_PTR(config, FSM_ERR_NULL_PTR);
     FSM_ASSERT_PTR(config->state_table, FSM_ERR_NULL_PTR);
@@ -123,7 +115,6 @@ fsm_status_t fsm_init(fsm_t * fsm,
     {
         return FSM_ERR_INVALID_STATE;
     }
-#endif
 
     fsm->config        = config;
     fsm->current_state = initial_state;
@@ -131,6 +122,7 @@ fsm_status_t fsm_init(fsm_t * fsm,
 #if FSM_CFG_USE_PREV_STATE
     fsm->prev_state    = initial_state;
 #endif
+    fsm->transition_active = false;
 
     return FSM_OK;
 }
@@ -139,14 +131,12 @@ fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event)
 {
     fsm_state_handler_t handler;
 
-#if FSM_CFG_PARAM_CHECK
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
 
     if (!fsm_is_state_valid(fsm, fsm->current_state))
     {
         return FSM_ERR_INVALID_STATE;
     }
-#endif
 
     handler = fsm->config->state_table[fsm->current_state];
 
@@ -162,16 +152,21 @@ fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event)
 
 fsm_status_t fsm_set_state(fsm_t * fsm, uint8_t new_state)
 {
-#if FSM_CFG_PARAM_CHECK
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
 
     if (!fsm_is_state_valid(fsm, new_state))
     {
         return FSM_ERR_INVALID_STATE;
     }
-#endif
 
+    if (fsm->transition_active)
+    {
+        return FSM_ERR_REENTRANT;
+    }
+
+    fsm->transition_active = true;
     fsm_do_transition(fsm, new_state);
+    fsm->transition_active = false;
 
     return FSM_OK;
 }
