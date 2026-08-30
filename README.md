@@ -15,7 +15,8 @@ Public_Library/
 │   └── INA219_Driver/         # INA219 电流/功率监测芯片驱动
 ├── middleware/                # 与硬件无关的通用中间件
 │   ├── fsm/                   # 查表法有限状态机框架
-│   └── sort/                  # 冒泡排序算法（多类型）
+│   ├── sort/                  # 冒泡排序算法（多类型）
+│   └── uart_ring/             # 串口收发环形缓冲中间件
 └── skills/                    # 工程技能
     ├── mcu-code-style/        # MCU C 代码规范检查与自动修复
     ├── mcu-universal-driver/  # 通用驱动框架约束（架构 + 代码规范）
@@ -32,6 +33,7 @@ Public_Library/
 - **driver/INA219_Driver**：INA219A/B 电流/功率监测芯片通用驱动，I2C 接口（7 位地址 0x40~0x4F，16 位寄存器），默认按 1Ω 采样电阻配置（±320mA 量程 / 10µA 分辨率），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
 - **middleware/fsm**：基于查表法的轻量级 FSM 框架，配置与实例分离（实例仅 8 字节 RAM），entry / exit 动作、切换钩子与上一状态回退支持编译期裁剪，纯 C99 零平台依赖。
 - **middleware/sort**：多类型冒泡排序（int / uint16_t / uint32_t），支持升序 / 降序与提前终止优化。
+- **middleware/uart_ring**：串口收发环形缓冲中间件，RX / TX 双环 + 中断协作函数（SPSC 无锁），支持 TXE 中断自动泵发送（吐空自动关断），异步 TX、溢出统计、裸环工具面支持编译期裁剪，纯 C99 零平台依赖，可多实例。
 - **skills/mcu-code-style**：MCU 嵌入式 C 代码规范检查与自动修复技能，规则与具体芯片无关。
 - **skills/mcu-universal-driver**：跨平台可移植驱动框架约束，覆盖四层架构（应用层 → 驱动核心 → 移植契约 → 移植层）与单片机 C 代码规范，与具体芯片、总线、工具链无关。
 
