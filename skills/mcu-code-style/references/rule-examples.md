@@ -1,6 +1,6 @@
 # 规则对照示例（❌/✅）
 
-每条规则一节，反例与正例对照。示例取材自 CH32_RGBLed 项目真实代码，规则本身适用于任何 MCU 项目。
+每条规则一节，反例与正例对照。示例取材自 CH32_RGBLed 项目真实代码；为与当前规范保持一致，标记为 ✅ 的片段已做规范化整理。规则本身适用于任何 MCU 项目。R1–R5 的规则、优先级和例外以 `SKILL.md` 为唯一准则；本文件仅提供 ❌/✅ 对照，不新增或覆盖规则。单个示例只说明其所属小节的规则，其余标识符不作为额外规范依据。
 
 ## R1 命名
 
@@ -17,7 +17,7 @@ void set_state(int s)
 
 ```c
 void LED_Init(void)
-void LED_SetHwState(LedId led_id, bool state)
+void LED_SetHwState(led_id_t led_id, bool state)
 ```
 
 ### R1.2 文件内静态函数：小写 snake_case
@@ -66,7 +66,7 @@ typedef enum { ... } led_state_t;
 typedef struct { ... } led_handle_t;
 ```
 
-> **标记案例**：CH32_RGBLed 的 `led.h` 中 `LedId` 就是历史遗留的不一致。它是公共 API，重命名波及 `led.c`、`led.h` 及所有 app 层调用点——按 SKILL.md 第四步第 4 条，先列影响面征询用户，确认后再改。
+> **标记案例**：CH32_RGBLed 的 `led.h` 中 `LedId` 是故意保留的反例和历史遗留不一致，仅用于展示 R1.4 违规。它是公共 API，重命名波及 `led.c`、`led.h` 及所有 app 层调用点——按 SKILL.md 第四步第 4 条，先列影响面征询用户，确认后再改。
 
 ### R1.5 宏 / 枚举值全大写
 
@@ -144,7 +144,7 @@ case LED_STATE_ON:
 }
 
 default:
-    LED_SetHwState((LedId)i, false);
+    LED_SetHwState((led_id_t)i, false);
     break;
 }
 ```
@@ -236,7 +236,7 @@ uint16_t blink_count_target;    /**< 目标闪烁次数（0 表示无限闪烁�
 
 ✅ 来自 led.h 的 `@note`："依赖：ch32l103.h。不依赖任何 app/ 层头文件。"
 
-分层与依赖方向：`main → app → bsp → driver/middleware → 厂商库`，只允许上层 include 下层。
+分层与依赖方向的完整规则以 `SKILL.md` 的 R4 为准；以下片段只用于说明反向 include 的风险。
 
 ### R4.2 内部状态 static + 访问函数
 
@@ -252,7 +252,7 @@ multi_led_manager_t led_manager;   /* 全局可写 */
 static multi_led_manager_t s_led_manager;   /* 仅本文件可访问 */
 
 void
-LED_On(LedId id)                            /* 外部通过 API 操作 */
+LED_On(led_id_t id)                         /* 外部通过 API 操作 */
 {
     ...
 }

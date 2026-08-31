@@ -38,7 +38,7 @@ description: 单片机（MCU）嵌入式 C 代码规范检查与自动修复，�
 
 ## 第三步：逐规则检查并修复
 
-详细的 ❌/✅ 代码对照示例见[规则对照示例](references/rule-examples.md)——开始逐规则检查前先读它。
+详细的 ❌/✅ 代码对照示例见[规则对照示例](references/rule-examples.md)——开始逐规则检查前先读它。R1–R5 的规范、优先级与例外以本文件为唯一准则；参考文件仅用于示例，不新增或覆盖规则。
 
 ### R1 命名
 
@@ -116,5 +116,11 @@ description: 单片机（MCU）嵌入式 C 代码规范检查与自动修复，�
 
 1. 复制 `assets/clang-format` → 项目根 `.clang-format`
 2. 复制 `assets/editorconfig` → 项目根 `.editorconfig`
+
+生成后做非破坏性验证：
+
+- 先确认目标项目实际使用的 clang-format 版本，再用该版本对代表性的 `.c` / `.h` 文件执行 dry-run（例如 `clang-format --dry-run --Werror --style=file <file>`），确认资产可解析。
+- 检查 `.editorconfig` 语法及项目的行尾约定；配置已复制不等于验证通过。
+- 当前环境没有 clang-format 或无法执行 dry-run 时，输出中明确标记“未完成运行时验证”，不得声称资产已验证。
 
 并告知用户：`.clang-format` 只能覆盖 R2 格式类规则；R1 命名、R3 注释、R4 架构、R5 ISR 安全是任何格式化工具都做不了的——这些正是需要本 skill 的部分。
