@@ -49,6 +49,8 @@ int sgm41513_io_read_reg(void *io_ctx, uint8_t dev_addr, uint8_t reg,
                          uint8_t *val)
 {
     (void)io_ctx;      /* bus context, NULL on single-bus systems       */
+    (void)dev_addr;
+    (void)reg;
 
     /* --- pseudo implementation - replace with your I2C API -----------
     if (i2c_write(dev_addr, &reg, 1, no_stop) != 0) return ERROR;
@@ -85,6 +87,9 @@ int sgm41513_io_write_reg(void *io_ctx, uint8_t dev_addr, uint8_t reg,
                           uint8_t val)
 {
     (void)io_ctx;
+    (void)dev_addr;
+    (void)reg;
+    (void)val;
 
     /* --- pseudo implementation - replace with your I2C API -----------
     uint8_t buf[2] = { reg, val };

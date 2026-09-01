@@ -120,6 +120,11 @@ static sgm41513_result_t sgm_wr(sgm41513_dev_t *dev, uint8_t reg, uint8_t val)
 #if SGM41513_REG_SHADOW
     if (sgm_is_rw_reg(reg)) {
         dev->shadow[reg] = val;
+        if (reg == SGM41513_REG07) {
+            /* BATFET_DIS is a one-shot ship-mode command, not a setting. */
+            dev->shadow[reg] = (uint8_t)(dev->shadow[reg]
+                                         & (uint8_t)~SGM41513_BATFET_DIS);
+        }
     }
 #endif
 
