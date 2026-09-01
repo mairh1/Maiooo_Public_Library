@@ -12,7 +12,8 @@ Public_Library/
 │   ├── AW32257_Driver/        # AW32257 充电/升压芯片驱动
 │   ├── WM8978_Driver/         # WM8978 音频编解码芯片驱动
 │   ├── MAX17048_Driver/       # MAX17048/49 电量计芯片驱动
-│   └── INA219_Driver/         # INA219 电流/功率监测芯片驱动
+│   ├── INA219_Driver/         # INA219 电流/功率监测芯片驱动
+│   └── DRV2605L_Driver/       # DRV2605L ERM/LRA 触觉电机驱动
 ├── middleware/                # 与硬件无关的通用中间件
 │   ├── fsm/                   # 查表法有限状态机框架
 │   ├── sort/                  # 冒泡排序算法（多类型）
@@ -31,6 +32,7 @@ Public_Library/
 - **driver/WM8978_Driver**：WM8978 音频编解码芯片通用驱动，ISO C99，通过 I2C 接口接入。
 - **driver/MAX17048_Driver**：MAX17048/MAX17049 ModelGauge 锂电电量计通用驱动，I2C 接口（7 位地址 0x36，16 位寄存器），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
 - **driver/INA219_Driver**：INA219A/B 电流/功率监测芯片通用驱动，I2C 接口（7 位地址 0x40~0x4F，16 位寄存器），默认按 1Ω 采样电阻配置（±320mA 量程 / 10µA 分辨率），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
+- **driver/DRV2605L_Driver**：DRV2605L ERM/LRA 触觉电机通用驱动，I2C 接口（7 位地址 0x5A），支持 ROM 波形序列、RTP 实时播放、执行器/库/模式配置与原始寄存器访问，纯 C99、可多实例。
 - **middleware/fsm**：基于查表法的轻量级 FSM 框架，配置与实例分离（实例仅 8 字节 RAM），entry / exit 动作、切换钩子与上一状态回退支持编译期裁剪，纯 C99 零平台依赖。
 - **middleware/sort**：多类型冒泡排序（int / uint16_t / uint32_t），支持升序 / 降序与提前终止优化。
 - **middleware/uart_ring**：串口收发环形缓冲中间件，RX / TX 双环 + 中断协作函数（SPSC 无锁），支持 TXE 中断自动泵发送（吐空自动关断），异步 TX、溢出统计、裸环工具面支持编译期裁剪，纯 C99 零平台依赖，可多实例。
