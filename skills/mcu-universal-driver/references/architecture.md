@@ -93,6 +93,7 @@ conf 头的宏分四类：
 - `port/drv_xxx_io_template.c`：填空式移植模板，注释里给常见平台的写法示例
 - `examples/<平台>/` 默认不创建（见 SKILL.md C10），演示用法在 README 给调用片段；用户明确要求时才编写完整示例
 - README 的「已知坑」章节记录数据手册里的时序陷阱与硬件怪癖——这些是移植者最需要却最容易丢的信息
+- 芯片手册原文归档在项目根 `datasheet/`，文件名以芯片型号开头、与驱动目录一致——README「已知坑」引用的手册要能就地查证（见 SKILL.md C10）
 
 ## 3 线程安全三级模型
 
@@ -124,6 +125,7 @@ conf 头的宏分四类：
 <model>_io.h      移植契约：init/read_reg/write_reg/delay_ms + 可选 lock/unlock
 port/…_template.c 移植模板（含多平台注释示例）
 README.md         分层图 + 移植三步走 + conf 表 + API 参考 + 已知坑
+datasheet/<model>.pdf 手册归档（项目根 datasheet/，与驱动一同提交，见 C10）
 ```
 
 值得照抄的点：结果码语义分层；set 就近取整到硬件档位并钳位、get 返回实际生效值；「已知坑」章节把数据手册的时序陷阱显式交给调用者。
