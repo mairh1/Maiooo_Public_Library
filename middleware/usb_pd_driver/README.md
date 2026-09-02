@@ -1,4 +1,4 @@
-# USB_PD_Driver — 可移植 USB PD Sink 协议栈
+# usb_pd_driver — 可移植 USB PD Sink 协议栈
 
 分层可移植的 USB PD（Power Delivery）受电端协议栈：协议核心为纯 C99、零寄存器访问、无动态内存，全部硬件操作收敛到 `usbpd_io.h` 移植契约。内置 CH32L103 现成移植示例。
 

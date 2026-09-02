@@ -8,7 +8,6 @@
 Public_Library/
 ├── driver/                    # 外设 / 芯片驱动
 │   ├── SGM41513_Driver/       # SGM41513 系列锂电充电管理驱动
-│   ├── USB_PD_Driver/         # USB PD Sink 协议栈（内置 CH32L103 移植）
 │   ├── AW32257_Driver/        # AW32257 充电/升压芯片驱动
 │   ├── WM8978_Driver/         # WM8978 音频编解码芯片驱动
 │   ├── MAX17048_Driver/       # MAX17048/49 电量计芯片驱动
@@ -17,7 +16,8 @@ Public_Library/
 ├── middleware/                # 与硬件无关的通用中间件
 │   ├── fsm/                   # 查表法有限状态机框架
 │   ├── sort/                  # 冒泡排序算法（多类型）
-│   └── uart_ring/             # 串口收发环形缓冲中间件
+│   ├── uart_ring/             # 串口收发环形缓冲中间件
+│   └── usb_pd_driver/         # USB PD Sink 协议栈（内置 CH32L103 移植）
 └── skills/                    # 工程技能
     ├── mcu-code-style/        # MCU C 代码规范检查与自动修复
     ├── mcu-universal-driver/  # 通用驱动框架约束（架构 + 代码规范）
@@ -27,7 +27,7 @@ Public_Library/
 ## 组件说明
 
 - **driver/SGM41513_Driver**：SGM41513 / 41513A / 41513D 锂电充电管理驱动，I2C 接口，纯 C99 跨平台，无动态内存分配，可多实例。
-- **driver/USB_PD_Driver**：分层可移植的 USB PD 受电端协议栈（协议核心零寄存器访问），移植只需实现 `usbpd_io.h` 的 14 个函数。
+- **middleware/usb_pd_driver**：分层可移植的 USB PD 受电端协议栈（协议核心零寄存器访问），移植只需实现 `usbpd_io.h` 的 14 个函数。
 - **driver/AW32257_Driver**：AW32257 充电/升压芯片通用驱动，ISO C99，不含厂商头文件，通过 BSP 回调接入。
 - **driver/WM8978_Driver**：WM8978 音频编解码芯片通用驱动，ISO C99，通过 I2C 接口接入。
 - **driver/MAX17048_Driver**：MAX17048/MAX17049 ModelGauge 锂电电量计通用驱动，I2C 接口（7 位地址 0x36，16 位寄存器），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
