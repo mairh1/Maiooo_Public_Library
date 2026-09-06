@@ -1,16 +1,15 @@
 /**
  * @file    test_max17048.c
- * @brief   Mock-I2C unit tests for the portable MAX17048 driver core
+ * @brief   MAX17048 可移植驱动核心的模拟 I2C 单元测试
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-25
  *
  * @details
- * Implements the max17048_io.h contract against an in-memory register image
- * with hardware-faithful semantics (STATUS write-1-to-clear, VRESET OTP ID
- * low byte, read-only registers), then exercises the public API. Designed to
- * run on the host or under the MounRiver RV32 simulator (riscv32-wch-elf-run).
- * Exit code 0 = all checks passed.
+ * 基于内存寄存器镜像实现 max17048_io.h 契约，并模拟硬件语义
+ * （STATUS 写 1 清零、VRESET OTP ID 低字节、只读寄存器），随后
+ * 逐一调用公共 API。可在主机或 MounRiver RV32 模拟器
+ * （riscv32-wch-elf-run）上运行。退出码 0 = 全部检查通过。
  *
  * SPDX-License-Identifier: WTFPL
  */

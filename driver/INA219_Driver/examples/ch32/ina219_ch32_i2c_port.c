@@ -1,14 +1,14 @@
 /**
  * @file    ina219_ch32_i2c_port.c
- * @brief   INA219 driver io contract bound to a CH32 board adapter
+ * @brief   绑定到 CH32 板级适配器的 INA219 驱动 io 契约实现
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-27
  *
  * @details
- * Implements the functions from ina219_io.h on top of the SDK-neutral board
- * callbacks in ina219_ch32_i2c_port.h. Pass the ina219_ch32_adapter_t
- * pointer to ina219_init() as io_ctx:
+ * 基于 ina219_ch32_i2c_port.h 中 SDK 无关的板级回调，实现
+ * ina219_io.h 的各函数。把 ina219_ch32_adapter_t 指针作为 io_ctx
+ * 传给 ina219_init()：
  *
  *     ina219_init(&meter, &g_i2c_adapter, INA219_I2C_ADDR);
  *
@@ -20,7 +20,7 @@
 #include "ina219_io.h"
 #include "ina219_ch32_i2c_port.h"
 
-/** Adapter sanity check: read/write callbacks and a positive timeout. */
+/** 适配器健全性检查：读写回调齐全且超时为正。 */
 static int ina219_ch32_adapter_valid(const ina219_ch32_adapter_t *adapter)
 {
     if ((adapter == NULL) || (adapter->mem_write == NULL) ||

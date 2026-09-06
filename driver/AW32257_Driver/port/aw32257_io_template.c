@@ -1,8 +1,8 @@
 /**
  * @file    aw32257_io_template.c
- * @brief   AW32257 platform I/O port template.
- * @details Copy this file into the application and replace the bounded
- *          transaction stubs with the selected MCU SDK implementation.
+ * @brief   AW32257 平台 I/O 移植模板。
+ * @details 把本文件复制进应用工程，用所选 MCU SDK 的实现替换
+ *          这些带超时保护的事务桩函数。
  */
 #include "aw32257_io.h"
 
@@ -17,7 +17,7 @@ int32_t aw32257_io_read_reg(void * io_ctx,
     (void)register_address;
     (void)value;
     (void)timeout_ms;
-    /* Perform S + write address + register + Sr + read address + byte + P. */
+    /* 执行 S + 写地址 + 寄存器 + Sr + 读地址 + 字节 + P。 */
     return AW32257_IO_ERROR;
 }
 
@@ -32,7 +32,7 @@ int32_t aw32257_io_write_reg(void * io_ctx,
     (void)register_address;
     (void)value;
     (void)timeout_ms;
-    /* Perform S + write address + register + value + P. */
+    /* 执行 S + 写地址 + 寄存器 + 值 + P。 */
     return AW32257_IO_ERROR;
 }
 
@@ -40,5 +40,5 @@ void aw32257_io_delay_ms(void * io_ctx, uint32_t milliseconds)
 {
     (void)io_ctx;
     (void)milliseconds;
-    /* Implement a non-early-returning delay in thread/main context. */
+    /* 在线程/主循环上下文实现不提前返回的延时。 */
 }

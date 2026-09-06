@@ -1,11 +1,10 @@
 /**
  * @file    wm8978_ch32_example.c
- * @brief   Explicit I2S/16-bit/slave/48-kHz-coefficient WM8978 example
+ * @brief   显式配置 I2S/16 位/从机/48 kHz 系数的 WM8978 示例
  *
- * This configures only the codec. The CH32 BSP must separately provide a
- * stable 256fs MCLK (for example 12.288 MHz for 48 kHz), configure its audio
- * peripheral and DMA, keep DACDAT at zero during codec startup, and start the
- * stream before unmuting the headphone outputs.
+ * 本示例只配置 codec。CH32 BSP 须另行提供稳定的 256fs MCLK（如
+ * 48 kHz 用 12.288 MHz）、配置音频外设与 DMA、在 codec 启动期间
+ * 保持 DACDAT 为零，并在解除耳机静音前启动数据流。
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -35,7 +34,7 @@ wm8978_status_t wm8978_ch32_example_init_i2s16_slave(
         return status;
     }
 
-    /* Select external MCLK before any optional PLL work. */
+    /* 在任何可选的 PLL 操作之前先选择外部 MCLK。 */
     clock.codec_is_master = false;
     clock.use_pll = false;
     clock.mclk_divider = WM8978_MCLK_DIV_1;

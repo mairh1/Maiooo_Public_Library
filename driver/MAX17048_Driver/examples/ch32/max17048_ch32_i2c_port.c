@@ -1,14 +1,14 @@
 /**
  * @file    max17048_ch32_i2c_port.c
- * @brief   MAX17048 driver io contract bound to a CH32 board adapter
+ * @brief   绑定到 CH32 板级适配器的 MAX17048 驱动 io 契约实现
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-25
  *
  * @details
- * Implements the four functions from max17048_io.h on top of the SDK-neutral
- * board callbacks in max17048_ch32_i2c_port.h. Pass the
- * max17048_ch32_adapter_t pointer to max17048_init() as io_ctx:
+ * 基于 max17048_ch32_i2c_port.h 中 SDK 无关的板级回调，实现
+ * max17048_io.h 的四个函数。把 max17048_ch32_adapter_t 指针作为
+ * io_ctx 传给 max17048_init()：
  *
  *     max17048_init(&gauge, &g_i2c_adapter, MAX17048_I2C_ADDR);
  *
@@ -20,7 +20,7 @@
 #include "max17048_io.h"
 #include "max17048_ch32_i2c_port.h"
 
-/** Adapter sanity check: read/write callbacks and a positive timeout. */
+/** 适配器健全性检查：读写回调齐全且超时为正。 */
 static int max17048_ch32_adapter_valid(const max17048_ch32_adapter_t *adapter)
 {
     if ((adapter == NULL) || (adapter->mem_write == NULL) ||

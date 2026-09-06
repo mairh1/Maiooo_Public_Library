@@ -1,15 +1,14 @@
 /**
  * @file    max17048_ch32_example.c
- * @brief   MAX17048 usage example on CH32 (board functions to be wired in)
+ * @brief   CH32 上的 MAX17048 使用示例（板级函数需自行接入）
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-25
  *
  * @details
- * Shows the typical application flow: init, alert setup, 1s periodic
- * sampling with temperature compensation, and servicing the ALRT pin from
- * thread context (the GPIO ISR only sets a flag). Board I2C functions
- * referenced here are the adapter callbacks the concrete BSP provides.
+ * 演示典型应用流程：初始化、告警配置、带温度补偿的 1s 周期采样，
+ * 以及在线程上下文处理 ALRT 引脚（GPIO ISR 只置标志）。此处引用
+ * 的板级 I2C 函数由具体 BSP 以适配器回调形式提供。
  *
  * SPDX-License-Identifier: WTFPL
  */

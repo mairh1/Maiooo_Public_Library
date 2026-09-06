@@ -1,16 +1,15 @@
 /**
  * @file    max17048_ch32_i2c_port.h
- * @brief   SDK-neutral CH32 I2C adapter contract for the MAX17048 driver
+ * @brief   MAX17048 驱动的 SDK 无关 CH32 I2C 适配器契约
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-25
  *
  * @details
- * This adapter deliberately includes no WCH device header. CH32 families and
- * SDK revisions expose different I2C APIs, so the board layer supplies one
- * bounded memory-read, one memory-write and one delay function, all keyed by
- * the unshifted 7-bit address 0x36. The adapter is passed to
- * max17048_init() as io_ctx, so multiple buses/devices can coexist.
+ * 本适配器刻意不包含 WCH 器件头文件。CH32 各家族与各版本 SDK 暴露
+ * 的 I2C API 不同，因此由板级层提供一个带超时保护的存储器读、一个
+ * 存储器写与一个延时函数，全部以未移位的 7 位地址 0x36 为关键字。
+ * 适配器作为 io_ctx 传给 max17048_init()，因此多总线/多器件可共存。
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -25,12 +24,12 @@ extern "C" {
 #endif
 
 /**
- * @brief Board-owned blocking I2C memory write.
+ * @brief 板级提供的阻塞式 I2C 存储器写。
  *
- * Wire sequence must be S + addr(W) + reg + data[0..len-1] + P in one
- * transaction, MSB first. All waits bounded by timeout_ms.
+ * 线序必须是单次事务内 S + addr(W) + reg + data[0..len-1] + P，
+ * MSB 在前。所有等待受 timeout_ms 约束。
  *
- * @return 0 on success; non-zero platform error otherwise.
+ * @retval 0 成功；否则为非零平台错误。
  */
 typedef int32_t (*max17048_ch32_mem_write_fn)(void *board_context,
                                               uint8_t addr7,
@@ -40,13 +39,13 @@ typedef int32_t (*max17048_ch32_mem_write_fn)(void *board_context,
                                               uint32_t timeout_ms);
 
 /**
- * @brief Board-owned blocking I2C memory read.
+ * @brief 板级提供的阻塞式 I2C 存储器读。
  *
- * Wire sequence must be S + addr(W) + reg + Sr + addr(R) + data[0..len-1]
- * + N + P in one transaction (repeated START or STOP+START both acceptable
- * for this device), MSB first.
+ * 线序必须是单次事务内 S + addr(W) + reg + Sr + addr(R) +
+ * data[0..len-1] + N + P（对本器件，重复 START 与 STOP+START 均
+ * 可接受），MSB 在前。
  *
- * @return 0 on success; non-zero platform error otherwise.
+ * @retval 0 成功；否则为非零平台错误。
  */
 typedef int32_t (*max17048_ch32_mem_read_fn)(void *board_context,
                                              uint8_t addr7,
@@ -55,29 +54,26 @@ typedef int32_t (*max17048_ch32_mem_read_fn)(void *board_context,
                                              uint16_t len,
                                              uint32_t timeout_ms);
 
-/** @brief Delay at least the requested duration in thread/main context. */
+/** @brief 在线程/主循环上下文延时至少所请求的时长。 */
 typedef void (*max17048_ch32_delay_fn)(void *board_context,
                                        uint32_t milliseconds);
 
-/** @brief Caller-owned CH32 board callbacks bound to one I2C bus. */
+/** @brief 调用者持有的、绑定到一条 I2C 总线的 CH32 板级回调。 */
 typedef struct
 {
-    void *board_context;            /**< Opaque board I2C context. */
-    max17048_ch32_mem_write_fn mem_write; /**< Register write callback. */
-    max17048_ch32_mem_read_fn mem_read;   /**< Register read callback. */
-    max17048_ch32_delay_fn delay_ms;      /**< Optional; NULL allowed when
-                                               the model table is unused. */
-    uint32_t io_timeout_ms;         /**< Hard per-transaction bound, > 0. */
+    void *board_context;            /**< 板级 I2C 的不透明上下文。 */
+    max17048_ch32_mem_write_fn mem_write; /**< 寄存器写回调。 */
+    max17048_ch32_mem_read_fn mem_read;   /**< 寄存器读回调。 */
+    max17048_ch32_delay_fn delay_ms;      /**< 可选；不用模型表时可填 NULL。 */
+    uint32_t io_timeout_ms;         /**< 单次事务的硬性超时上限，> 0。 */
 } max17048_ch32_adapter_t;
 
 /**
- * @brief Board hook required by max17048_io_delay_ms().
+ * @brief max17048_io_delay_ms() 要求的板级钩子。
  *
- * The io contract is a set of global functions without per-call context,
- * so the millisecond delay used by the model-table load sequence binds to
- * this named board function. Implement it with the CH32 systick/RTOS delay
- * that never returns early. It is never called when
- * MAX17048_USE_MODEL_TABLE = 0.
+ * io 契约是一组无逐调用上下文的全局函数，因此模型表加载序列所用
+ * 的毫秒延时绑定到这个具名板级函数。用绝不提前返回的 CH32
+ * systick/RTOS 延时实现。MAX17048_USE_MODEL_TABLE = 0 时从不调用。
  */
 void max17048_ch32_board_delay_ms(uint32_t ms);
 

@@ -1,10 +1,10 @@
 /*
- * sgm41513.c - Driver core for the SGM41513 battery charger family.
+ * sgm41513.c - SGM41513 系列电池充电芯片的驱动核心。
  *
- * Portable C99, no dynamic memory, no platform headers. All hardware
- * access goes through the four functions declared in sgm41513_io.h.
+ * 可移植 C99，无动态内存、无平台头文件。全部硬件访问都通过
+ * sgm41513_io.h 声明的四个函数完成。
  *
- * Datasheet: SGM41513_SGM41513A_SGM41513D, APRIL 2025 REV. C.1
+ * 数据手册: SGM41513_SGM41513A_SGM41513D, APRIL 2025 REV. C.1
  */
 
 #include "sgm41513.h"
@@ -12,7 +12,7 @@
 #include "sgm41513_io.h"
 
 /* ---------------------------------------------------------------------- */
-/* Concurrency helpers                                                     */
+/* 并发保护辅助宏                                                          */
 /* ---------------------------------------------------------------------- */
 
 #if SGM41513_THREAD_SAFE
@@ -29,10 +29,10 @@
 } while (0)
 
 /* ---------------------------------------------------------------------- */
-/* Conversion tables (datasheet "Linear Table" sections)                    */
+/* 换算表（数据手册 "Linear Table" 各节）                                   */
 /* ---------------------------------------------------------------------- */
 
-/* ICHG[5:0] fast charge current in mA (REG02), non-linear, 0..3000 mA   */
+/* ICHG[5:0] 快充电流 mA（REG02），非线性，0..3000 mA                     */
 static const uint16_t sgm_ichg_tab[64] = {
        0,    5,   10,   15,   20,   25,   30,   35,
       40,   50,   60,   70,   80,   90,  100,  110,
@@ -44,23 +44,23 @@ static const uint16_t sgm_ichg_tab[64] = {
     2460, 2580, 2700, 2820, 2940, 3000, 3000, 3000
 };
 
-/* IPRECHG[3:0] / ITERM[3:0] in mA (REG03), 5..240 mA                    */
+/* IPRECHG[3:0] / ITERM[3:0] 电流 mA（REG03），5..240 mA                  */
 static const uint16_t sgm_preterm_tab[16] = {
       5,  10,  15,  20,  30,  40,  50,  60,
      80, 100, 120, 140, 160, 180, 200, 240
 };
 
-/* SYS_MIN[2:0] minimum system voltage in mV (REG01), non-uniform steps  */
+/* SYS_MIN[2:0] 最小系统电压 mV（REG01），步进不均匀                       */
 static const uint16_t sgm_sysmin_tab[8] = {
     2600, 2800, 3000, 3200, 3400, 3500, 3600, 3700
 };
 
-/* VINDPM_OS[1:0] window offsets in mV (REG0F)                           */
+/* VINDPM_OS[1:0] 各档窗口的偏置电压 mV（REG0F）                          */
 static const uint16_t sgm_vindpm_os_tab[4] = { 3900, 5900, 7500, 10500 };
 
-/* Registers that are fully read/write; they form the shadow cache and
- * are replayed by sgm41513_restore_settings(). REG08/09/0E are read
- * only, REG0A/0B only carry individual R/W bits.                        */
+/* 完全可读可写的寄存器集合；它们构成影子缓存(shadow)，由
+ * sgm41513_restore_settings() 重放。REG08/09/0E 只读，REG0A/0B 只有个别
+ * 位可读可写。                                                            */
 static const uint8_t sgm_rw_regs[11] = {
     SGM41513_REG00, SGM41513_REG01, SGM41513_REG02, SGM41513_REG03,
     SGM41513_REG04, SGM41513_REG05, SGM41513_REG06, SGM41513_REG07,
@@ -85,8 +85,8 @@ static bool sgm_is_rw_reg(uint8_t reg)
     return false;
 }
 
-/* Bits that self-clear or change without host action; excluded from the
- * optional write verification so it does not produce false failures.    */
+/* 会自清零或无需主机动作即自行变化的位；将它们排除在可选的
+ * 写校验之外，避免产生误报。                                              */
 static uint8_t sgm_volatile_bits(uint8_t reg)
 {
     switch (reg) {
@@ -98,7 +98,7 @@ static uint8_t sgm_volatile_bits(uint8_t reg)
 }
 
 /* ---------------------------------------------------------------------- */
-/* Low-level register access (lock must be held by the caller)             */
+/* 底层寄存器访问（调用方必须已持有锁）                                     */
 /* ---------------------------------------------------------------------- */
 
 static sgm41513_result_t sgm_rd(sgm41513_dev_t *dev, uint8_t reg, uint8_t *val)
@@ -121,7 +121,7 @@ static sgm41513_result_t sgm_wr(sgm41513_dev_t *dev, uint8_t reg, uint8_t val)
     if (sgm_is_rw_reg(reg)) {
         dev->shadow[reg] = val;
         if (reg == SGM41513_REG07) {
-            /* BATFET_DIS is a one-shot ship-mode command, not a setting. */
+            /* BATFET_DIS 是一次性的船运模式命令，不属于配置项。          */
             dev->shadow[reg] = (uint8_t)(dev->shadow[reg]
                                          & (uint8_t)~SGM41513_BATFET_DIS);
         }
@@ -140,7 +140,7 @@ static sgm41513_result_t sgm_wr(sgm41513_dev_t *dev, uint8_t reg, uint8_t val)
         }
     }
 #else
-    (void)sgm_volatile_bits; /* keep the helper referenced */
+    (void)sgm_volatile_bits; /* 保持该辅助函数被引用 */
 #endif
 
     return SGM41513_OK;
@@ -160,7 +160,7 @@ static sgm41513_result_t sgm_rmw(sgm41513_dev_t *dev, uint8_t reg,
 }
 
 /* ---------------------------------------------------------------------- */
-/* Unit conversion helpers                                                 */
+/* 物理量换算辅助函数                                                      */
 /* ---------------------------------------------------------------------- */
 
 static uint8_t sgm_lut_nearest(const uint16_t *tab, uint8_t n, uint32_t val)
@@ -179,8 +179,8 @@ static uint8_t sgm_lut_nearest(const uint16_t *tab, uint8_t n, uint32_t val)
     return best;
 }
 
-/* VREG[4:0] (REG04): 3856 + 32*code mV for code <= 24, except code 15
- * which is a 4350 mV special case; codes above 24 clamp to code 24.     */
+/* VREG[4:0]（REG04）：码点 <= 24 时为 3856 + 32*码点 mV，但码点 15 为
+ * 4350 mV 特例；码点高于 24 钳位到码点 24。                               */
 static uint32_t sgm_vreg_from_code(uint8_t code)
 {
     if (code > SGM41513_VREG_CODE_MAX) {
@@ -208,7 +208,7 @@ static uint8_t sgm_vreg_to_code(uint32_t mv)
     return best;
 }
 
-/* IINDPM[4:0] (REG00): 100 + 100*code mA, rounded to nearest step       */
+/* IINDPM[4:0]（REG00）：100 + 100*码点 mA，四舍五入到最近档             */
 static uint8_t sgm_iindpm_to_code(uint32_t ma)
 {
     uint32_t code;
@@ -225,7 +225,7 @@ static uint8_t sgm_iindpm_to_code(uint32_t ma)
 }
 
 /* ---------------------------------------------------------------------- */
-/* 1. Initialization / identification                                       */
+/* 1. 初始化 / 器件识别                                                    */
 /* ---------------------------------------------------------------------- */
 
 sgm41513_result_t sgm41513_init(sgm41513_dev_t *dev, void *io_ctx,
@@ -249,7 +249,7 @@ sgm41513_result_t sgm41513_init(sgm41513_dev_t *dev, void *io_ctx,
 
     DRV_LOCK();
 
-    /* Validate the part: SGMPART must read 0, PN must be 0 or 1.       */
+    /* 校验器件：SGMPART 必须读出 0，PN 必须为 0 或 1。                   */
     res = sgm_rd(dev, SGM41513_REG0B, &v);
     if (res != SGM41513_OK) {
         DRV_UNLOCK();
@@ -264,15 +264,15 @@ sgm41513_result_t sgm41513_init(sgm41513_dev_t *dev, void *io_ctx,
         DRV_UNLOCK();
         return SGM41513_ERR_NOT_READY;
     }
-    /* PN = 0 -> SGM41513; PN = 1 -> SGM41513A or D (config resolves).  */
+    /* PN = 0 -> SGM41513；PN = 1 -> SGM41513A 或 D（由配置确定）。     */
     if (pn == 0u) {
         dev->variant = (uint8_t)SGM41513_CHIP_SGM41513;
     }
 
 #if SGM41513_REG_SHADOW
     {
-        /* Snapshot the current R/W register images so that
-         * restore_settings() replays the live configuration.           */
+        /* 保存当前可读可写寄存器镜像，使 restore_settings()
+         * 重放的是实际生效的配置。                                        */
         uint8_t i;
         for (i = 0; i < (uint8_t)(sizeof(sgm_rw_regs)); i++) {
             res = sgm_rd(dev, sgm_rw_regs[i], &dev->shadow[sgm_rw_regs[i]]);
@@ -324,7 +324,7 @@ sgm41513_result_t sgm41513_reset(sgm41513_dev_t *dev)
     DRV_LOCK();
     res = sgm_rd(dev, SGM41513_REG0B, &v);
     if (res == SGM41513_OK) {
-        /* REG_RST self-clears; REG0B is not part of the shadow cache.  */
+        /* REG_RST 自清零；REG0B 不在影子缓存(shadow)范围内。            */
         res = sgm_wr(dev, SGM41513_REG0B, (uint8_t)(v | SGM41513_REG_RST));
     }
 #if SGM41513_REG_SHADOW
@@ -361,7 +361,7 @@ sgm41513_result_t sgm41513_restore_settings(sgm41513_dev_t *dev)
 #endif
 
 /* ---------------------------------------------------------------------- */
-/* 2. Charging control                                                     */
+/* 2. 充电控制                                                              */
 /* ---------------------------------------------------------------------- */
 
 sgm41513_result_t sgm41513_charge_enable(sgm41513_dev_t *dev, bool enable)
@@ -640,7 +640,7 @@ sgm41513_result_t sgm41513_set_min_vbat_otg(sgm41513_dev_t *dev,
 }
 
 /* ---------------------------------------------------------------------- */
-/* 3. Input management                                                     */
+/* 3. 输入管理                                                              */
 /* ---------------------------------------------------------------------- */
 
 sgm41513_result_t sgm41513_set_iindpm(sgm41513_dev_t *dev, uint32_t ma)
@@ -700,7 +700,7 @@ sgm41513_result_t sgm41513_set_vindpm(sgm41513_dev_t *dev, uint32_t mv)
     CHK_DEV(dev);
 
     DRV_LOCK();
-    /* Absolute mV -> code, relative to the active VINDPM_OS offset.    */
+    /* 绝对 mV -> 码点，相对当前生效的 VINDPM_OS 偏置档。                  */
     res = sgm_rd(dev, SGM41513_REG0F, &reg0f);
     if (res == SGM41513_OK) {
         off = sgm_vindpm_os_tab[(reg0f & SGM41513_VINDPM_OS_MASK)
@@ -854,7 +854,7 @@ sgm41513_result_t sgm41513_set_dpm_int_mask(sgm41513_dev_t *dev,
 }
 
 /* ---------------------------------------------------------------------- */
-/* 4. OTG reverse boost                                                    */
+/* 4. OTG 反向升压(boost)                                                  */
 /* ---------------------------------------------------------------------- */
 
 #if SGM41513_USE_OTG
@@ -868,15 +868,15 @@ sgm41513_result_t sgm41513_otg_enable(sgm41513_dev_t *dev, bool enable)
     DRV_LOCK();
     res = SGM41513_OK;
     if (enable) {
-        /* HIZ has priority over OTG and must be cleared first; the
-         * datasheet requires >= 30 ms before the boost can start.      */
+        /* HIZ 优先于 OTG，必须先清除；数据手册要求升压(boost)启动前
+         * 等待 >= 30 ms。                                                  */
         res = sgm_rd(dev, SGM41513_REG00, &v);
         if (res == SGM41513_OK) {
             if ((v & SGM41513_EN_HIZ) != 0u) {
                 res = sgm_wr(dev, SGM41513_REG00,
                              (uint8_t)(v & (uint8_t)~SGM41513_EN_HIZ));
                 if (res == SGM41513_OK) {
-                    DRV_UNLOCK();             /* sleep outside the lock */
+                    DRV_UNLOCK();             /* 退出锁后再睡眠 */
                     sgm41513_io_delay_ms(SGM41513_OTG_START_DELAY_MS);
                     DRV_LOCK();
                 }
@@ -935,8 +935,8 @@ sgm41513_result_t sgm41513_set_iterm_x6(sgm41513_dev_t *dev, bool enable)
     sgm41513_result_t res;
     CHK_DEV(dev);
     DRV_LOCK();
-    /* Charge-mode meaning of OTGF_ITREMR: 0 -> ITERM x 6 when
-     * ICHG > 300 mA, 1 -> ITERM as programmed (POR).                   */
+    /* OTGF_ITREMR 的充电模式语义：0 -> ICHG > 300 mA 时 ITERM x 6，
+     * 1 -> ITERM 按编程值（POR）。                                        */
     res = sgm_rmw(dev, SGM41513_REG0D, SGM41513_OTGF_ITREMR,
                   enable ? 0u : SGM41513_OTGF_ITREMR);
     DRV_UNLOCK();
@@ -945,7 +945,7 @@ sgm41513_result_t sgm41513_set_iterm_x6(sgm41513_dev_t *dev, bool enable)
 #endif /* SGM41513_USE_OTG */
 
 /* ---------------------------------------------------------------------- */
-/* 5. Status and faults                                                    */
+/* 5. 状态与故障                                                            */
 /* ---------------------------------------------------------------------- */
 
 static sgm41513_vbus_type_t sgm_decode_vbus(uint8_t raw, uint8_t variant)
@@ -957,7 +957,7 @@ static sgm41513_vbus_type_t sgm_decode_vbus(uint8_t raw, uint8_t variant)
     case 1u: return SGM41513_VBUS_USB_SDP;
     case 7u: return SGM41513_VBUS_OTG;
     case 2u:
-        /* SGM41513 (PSEL): adapter 2.4 A; A/D: USB CDP 1.5 A.          */
+        /* SGM41513（PSEL）：适配器 2.4 A；A/D：USB CDP 1.5 A。            */
         return is_ad ? SGM41513_VBUS_USB_CDP : SGM41513_VBUS_ADAPTER_PSEL;
     case 3u: return is_ad ? SGM41513_VBUS_USB_DCP : SGM41513_VBUS_RESERVED;
     case 5u: return is_ad ? SGM41513_VBUS_UNKNOWN : SGM41513_VBUS_RESERVED;
@@ -1005,9 +1005,8 @@ sgm41513_result_t sgm41513_get_faults(sgm41513_dev_t *dev,
         return SGM41513_ERR_PARAM;
     }
 
-    /* REG09 latches fault bits until read: the first read returns the
-     * history (and clears it), the second read returns live values.
-     * NTC_FAULT is real time in both reads.                            */
+    /* REG09 的故障位锁存直至读取：第一次读返回历史（并清除），
+     * 第二次读返回实时值。NTC_FAULT 两次读取均为实时值。                 */
     DRV_LOCK();
     res = sgm_rd(dev, SGM41513_REG09, &first);
     if (res == SGM41513_OK) {
@@ -1061,7 +1060,7 @@ sgm41513_result_t sgm41513_get_dpm_status(sgm41513_dev_t *dev,
 }
 
 /* ---------------------------------------------------------------------- */
-/* 6. JEITA                                                                */
+/* 6. JEITA                                                                 */
 /* ---------------------------------------------------------------------- */
 
 #if SGM41513_USE_JEITA
@@ -1085,13 +1084,13 @@ sgm41513_result_t sgm41513_jeita_configure(sgm41513_dev_t *dev,
     DRV_LOCK();
     res = sgm_wr(dev, SGM41513_REG0C, reg0c);
     if (res == SGM41513_OK) {
-        /* JEITA_ISET_L (REG05 D0): cool range current 50% / 20%.       */
+        /* JEITA_ISET_L（REG05 D0）：冷区电流 50% / 20%。                  */
         res = sgm_rmw(dev, SGM41513_REG05, SGM41513_JEITA_ISET_L,
                       (cfg->cool_current == SGM41513_JEITA_COOL_I_20PCT)
                           ? SGM41513_JEITA_ISET_L : 0u);
     }
     if (res == SGM41513_OK) {
-        /* JEITA_VSET_H (REG07 D4): warm range voltage VREG or 4.1 V.   */
+        /* JEITA_VSET_H（REG07 D4）：暖区电压 VREG 或 4.1 V。              */
         res = sgm_rmw(dev, SGM41513_REG07, SGM41513_JEITA_VSET_H,
                       cfg->warm_voltage_use_vreg ? SGM41513_JEITA_VSET_H
                                                  : 0u);
@@ -1102,7 +1101,7 @@ sgm41513_result_t sgm41513_jeita_configure(sgm41513_dev_t *dev,
 #endif /* SGM41513_USE_JEITA */
 
 /* ---------------------------------------------------------------------- */
-/* 7. Watchdog / timers / thermal                                          */
+/* 7. 看门狗 / 计时器 / 热调节                                              */
 /* ---------------------------------------------------------------------- */
 
 sgm41513_result_t sgm41513_set_watchdog(sgm41513_dev_t *dev,
@@ -1172,7 +1171,7 @@ sgm41513_result_t sgm41513_set_thermal_reg_threshold(sgm41513_dev_t *dev,
 }
 
 /* ---------------------------------------------------------------------- */
-/* 8. Ship mode / BATFET                                                   */
+/* 8. 船运模式 / BATFET                                                     */
 /* ---------------------------------------------------------------------- */
 
 #if SGM41513_USE_SHIP
@@ -1207,7 +1206,7 @@ sgm41513_result_t sgm41513_set_batfet_reset_enable(sgm41513_dev_t *dev,
 #endif /* SGM41513_USE_SHIP */
 
 /* ---------------------------------------------------------------------- */
-/* 9. PUMPX                                                                */
+/* 9. PUMPX                                                                 */
 /* ---------------------------------------------------------------------- */
 
 #if SGM41513_USE_PUMPX
@@ -1256,7 +1255,7 @@ sgm41513_result_t sgm41513_pumpx_busy(sgm41513_dev_t *dev, bool *busy)
     DRV_UNLOCK();
 
     if (res == SGM41513_OK) {
-        /* PUMPX_UP/DN self-clear when the pulse sequence completes.    */
+        /* 脉冲序列完成后 PUMPX_UP/DN 自清零。                             */
         *busy = ((v & (SGM41513_PUMPX_UP | SGM41513_PUMPX_DN)) != 0u);
     }
     return res;
@@ -1264,7 +1263,7 @@ sgm41513_result_t sgm41513_pumpx_busy(sgm41513_dev_t *dev, bool *busy)
 #endif /* SGM41513_USE_PUMPX */
 
 /* ---------------------------------------------------------------------- */
-/* 10. STAT pin / D+ D- lines                                              */
+/* 10. STAT 引脚 / D+ D- 线                                                */
 /* ---------------------------------------------------------------------- */
 
 sgm41513_result_t sgm41513_set_stat_pin_mode(sgm41513_dev_t *dev,
@@ -1318,7 +1317,7 @@ sgm41513_result_t sgm41513_set_dpdm_voltage(sgm41513_dev_t *dev,
 }
 
 /* ---------------------------------------------------------------------- */
-/* 11. Register-level access                                               */
+/* 11. 寄存器级访问                                                         */
 /* ---------------------------------------------------------------------- */
 
 sgm41513_result_t sgm41513_read_reg(sgm41513_dev_t *dev, uint8_t reg,

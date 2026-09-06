@@ -1,6 +1,6 @@
 /**
  * @file    wm8978_ch32_i2c_port.c
- * @brief   SDK-neutral CH32 2-wire adapter for WM8978
+ * @brief   WM8978 的 SDK 无关 CH32 2 线适配器
  *
  * SPDX-License-Identifier: WTFPL
  */

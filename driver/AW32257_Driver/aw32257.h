@@ -1,15 +1,14 @@
 /**
  * @file    aw32257.h
- * @brief   Portable C99 driver for the AW32257 battery charger and boost IC
+ * @brief   AW32257 充电与升压芯片的可移植 C99 通用驱动
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-13
  *
  * @details
- * The driver owns no hardware resources. The caller provides bounded register
- * read/write callbacks, a millisecond delay callback, and storage for each
- * driver instance. The core is non-reentrant and must not be called from an
- * interrupt service routine.
+ * 驱动不持有任何硬件资源。调用者提供带超时保护的寄存器读写回调、
+ * 毫秒级延时回调，以及每个驱动实例的存储空间。核心不可重入，
+ * 禁止在中断服务程序(ISR)中调用。
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -30,7 +29,7 @@ extern "C" {
 #define AW32257_DRIVER_VERSION_MINOR          0
 #define AW32257_DRIVER_VERSION_PATCH          0
 
-/** @brief Driver result codes. */
+/** @brief 驱动结果码。 */
 typedef enum
 {
     AW32257_OK                         =  0,
@@ -46,7 +45,7 @@ typedef enum
     AW32257_ERR_POR_REQUIRED           = -10
 } aw32257_status_t;
 
-/** @brief Local lifecycle state of a driver instance. */
+/** @brief 驱动实例的本地生命周期状态。 */
 typedef enum
 {
     AW32257_LIFECYCLE_UNBOUND = 0,
@@ -58,10 +57,10 @@ typedef enum
 #include "aw32257_io.h"
 
 /**
- * @brief Fast-charge and safety-current register code.
+ * @brief 快充电流与安全限流寄存器码点。
  *
- * Physical current depends on the external sense resistor. Use
- * aw32257_current_code_to_ma_33mohm() only for a verified 33 mOhm design.
+ * 实际物理电流取决于外部检流电阻。仅当设计确认使用 33 mOhm
+ * 检流电阻时才可使用 aw32257_current_code_to_ma_33mohm() 换算。
  */
 typedef enum
 {
@@ -83,7 +82,7 @@ typedef enum
     AW32257_CURRENT_CODE_0F = 0x0F
 } aw32257_current_code_t;
 
-/** @brief Termination-current register code. */
+/** @brief 充电终止电流寄存器码点。 */
 typedef enum
 {
     AW32257_TERM_CURRENT_CODE_0 = 0,
@@ -96,7 +95,7 @@ typedef enum
     AW32257_TERM_CURRENT_CODE_7 = 7
 } aw32257_term_current_code_t;
 
-/** @brief Requested operation mode through REG01. External pins may override it. */
+/** @brief 通过 REG01 请求的工作模式。外部引脚可能覆盖该请求。 */
 typedef enum
 {
     AW32257_MODE_CHARGE = 0,
@@ -104,7 +103,7 @@ typedef enum
     AW32257_MODE_BOOST
 } aw32257_mode_t;
 
-/** @brief Charge state reported by REG00. */
+/** @brief REG00 上报的充电状态。 */
 typedef enum
 {
     AW32257_CHARGE_STATE_READY       = 0,
@@ -113,7 +112,7 @@ typedef enum
     AW32257_CHARGE_STATE_FAULT       = 3
 } aw32257_charge_state_t;
 
-/** @brief Charge fault reported by REG00. */
+/** @brief REG00 上报的充电故障。 */
 typedef enum
 {
     AW32257_CHARGE_FAULT_NORMAL                  = 0,
@@ -126,7 +125,7 @@ typedef enum
     AW32257_CHARGE_FAULT_NO_BATTERY              = 7
 } aw32257_charge_fault_t;
 
-/** @brief Boost fault reported by REG09. */
+/** @brief REG09 上报的升压(boost)故障。 */
 typedef enum
 {
     AW32257_BOOST_FAULT_NORMAL              = 0,
@@ -139,7 +138,7 @@ typedef enum
     AW32257_BOOST_FAULT_RESERVED_7          = 7
 } aw32257_boost_fault_t;
 
-/** @brief Symbolic boost-driver slew-rate code; no physical rates are documented. */
+/** @brief 符号化的升压驱动压摆率(slew rate)码点；手册未给出物理速率。 */
 typedef enum
 {
     AW32257_SLEW_RATE_DEFAULT = 0,
@@ -148,14 +147,14 @@ typedef enum
     AW32257_SLEW_RATE_SLOWEST
 } aw32257_slew_rate_t;
 
-/** @brief POR-only safety configuration. */
+/** @brief 仅上电复位(POR)时可写入的安全配置。 */
 typedef struct
 {
     aw32257_current_code_t max_charge_current;
     uint16_t max_charge_voltage_mv;
 } aw32257_safety_config_t;
 
-/** @brief Charge termination algorithm configuration. */
+/** @brief 充电终止判定算法配置。 */
 typedef struct
 {
     uint8_t window_periods;
@@ -164,7 +163,7 @@ typedef struct
     uint16_t recharge_threshold_mv;
 } aw32257_termination_config_t;
 
-/** @brief Boost output and power-train driver configuration. */
+/** @brief 升压输出与功率级驱动配置。 */
 typedef struct
 {
     uint16_t output_voltage_mv;
@@ -174,7 +173,7 @@ typedef struct
     bool force_pwm;
 } aw32257_boost_config_t;
 
-/** @brief Decoded REG03 device information. */
+/** @brief 解码后的 REG03 器件信息。 */
 typedef struct
 {
     uint8_t raw_reg03;
@@ -184,10 +183,9 @@ typedef struct
 } aw32257_device_info_t;
 
 /**
- * @brief Sequential status snapshot.
+ * @brief 顺序读取的状态快照。
  *
- * REG00, REG05, and REG09 are read in that order. The values are not a
- * hardware-latched atomic snapshot.
+ * 依次读取 REG00、REG05、REG09。这些值不是硬件锁存的原子快照。
  */
 typedef struct
 {
@@ -205,10 +203,10 @@ typedef struct
 } aw32257_status_snapshot_t;
 
 /**
- * @brief Sequential configuration snapshot.
+ * @brief 顺序读取的配置快照。
  *
- * Every register must be read successfully before the caller's output object
- * is updated. The snapshot is not atomic across registers.
+ * 全部寄存器都读取成功后才更新调用者的输出对象。快照在寄存器间
+ * 不保证原子性。
  */
 typedef struct
 {
@@ -237,7 +235,7 @@ typedef struct
     aw32257_boost_config_t boost;
 } aw32257_config_snapshot_t;
 
-/** @brief Caller-owned driver instance. */
+/** @brief 调用者持有的驱动实例。 */
 typedef struct
 {
     void * io_ctx;
@@ -247,144 +245,140 @@ typedef struct
 } aw32257_t;
 
 /**
- * @brief Bind a caller-owned instance to its platform callbacks.
+ * @brief 将调用者持有的实例绑定到平台回调。
  *
- * This function performs local validation and copies @p port by value. It
- * never accesses the I2C bus. A successful call establishes the BOUND state.
+ * 本函数只做本地校验并按值拷贝 @p port，绝不访问 I2C 总线。调用
+ * 成功即进入 BOUND 状态。
  *
- * @warning Rebinding any previously used instance is the caller's explicit
- * acknowledgement that the AW32257 has undergone a real hardware power-on
- * reset since its previous bind/init cycle. This is especially critical for
- * POR_REQUIRED. The driver cannot observe or prove a power cycle. Rebinding
- * without that reset can leave REG06 permanently locked for the current power
- * cycle.
+ * @warning 重新绑定任何用过的实例，即表示调用者明确确认 AW32257 自
+ * 上一次 bind/init 周期之后经历过真实的硬件上电复位。对
+ * POR_REQUIRED 状态尤其关键：驱动无法观测或证明电源周期。未复位
+ * 就重新绑定，可能使 REG06 在本次电源周期内永久锁定。
  *
- * @param[out] device Caller-owned instance. It need not be preinitialized.
- * @param[in]  port Platform callbacks, context, and non-zero I/O timeout.
- * @return AW32257_OK or a local argument error; no port callback is invoked.
+ * @param[out] device 调用者持有的实例，无需预先初始化。
+ * @param[in]  port 平台回调、上下文与非零的 I/O 超时。
+ * @retval    AW32257_OK 或本地参数错误；不调用任何 port 回调。
  */
 aw32257_status_t aw32257_init(aw32257_t * device, void * io_ctx, uint32_t io_timeout_ms);
 
 /**
- * @brief Perform the mandatory POR-safe safety write and device check.
+ * @brief 执行强制要求的 POR 安全写入与器件校验。
  *
- * After local validation, the first bus operation is a direct REG06 write,
- * followed by a REG06 readback and a REG03 identity read. The identity check
- * accepts all revision codes while requiring the documented vendor/part mask.
+ * 本地校验通过后，第一个总线操作是直接写 REG06，随后回读 REG06
+ * 并读 REG03 身份寄存器。身份校验接受任意版本码，但要求厂商/型号
+ * 掩码与手册一致。
  *
- * Every failure after entry with a BOUND instance, including a local safety
- * parameter failure before any I2C access, latches the instance into
- * POR_REQUIRED. The caller must perform a real hardware POR before binding and
- * initializing again. @p device_info is optional and is updated only on full
- * success.
+ * 以 BOUND 实例进入本函数后，任何失败——包括首次 I2C 访问之前的
+ * 本地安全参数失败——都会将实例锁存到 POR_REQUIRED。调用者必须
+ * 真实硬件 POR 后再重新绑定并初始化。@p device_info 为可选参数，
+ * 仅在完全成功时更新。
  *
- * @param[in,out] device Bound instance immediately following a hardware POR.
- * @param[in] safety Product-specific POR-only current and voltage limits.
- * @param[out] device_info Optional decoded identity result.
+ * @param[in,out] device 紧随硬件 POR 之后的 BOUND 实例。
+ * @param[in]     safety 产品专属的 POR 专用电流电压限值。
+ * @param[out]    device_info 可选的解码身份结果。
  */
 aw32257_status_t aw32257_power_on_init(aw32257_t * device,
                                         const aw32257_safety_config_t * safety,
                                         aw32257_device_info_t * device_info);
 
 /**
- * @brief Issue a software reset when charging and boost are inactive.
+ * @brief 在充电与升压均未工作时发起软件复位。
  *
- * The driver first samples REG00 and refuses reset while charge is in progress
- * or boost is active. Once the reset write is attempted, delay_ms(context, 32)
- * is always called before this function returns, even if the write callback
- * reports an error: the device may have accepted RESET while its ACK was lost.
- * No I2C access occurs during that requested quiet interval.
+ * 驱动先采样 REG00，充电进行中或升压工作时拒绝复位。一旦尝试写入
+ * 复位，即使写回调报错，函数返回前也一定调用
+ * delay_ms(context, 32)：器件可能已接受 RESET 而只是 ACK 丢失。
+ * 要求的静默间隔内不进行任何 I2C 访问。
  *
- * @return AW32257_OK, AW32257_ERR_STATE, or a lifecycle/port error.
+ * @retval AW32257_OK、AW32257_ERR_STATE，或生命周期/端口错误。
  */
 aw32257_status_t aw32257_soft_reset(aw32257_t * device);
 
-/** @brief Return the local lifecycle, or UNBOUND for a NULL pointer. */
+/** @brief 返回本地生命周期；空指针返回 UNBOUND。 */
 aw32257_lifecycle_t aw32257_get_lifecycle(const aw32257_t * device);
 
 /**
- * @brief Return the raw result of the most recent register I/O callback.
+ * @brief 返回最近一次寄存器 I/O 回调的原始结果。
  *
- * A successful read_reg/write_reg callback stores zero. The void delay_ms
- * callback and local validation errors do not change the stored value. A NULL
- * @p device also yields zero. This is not a persistent error history.
+ * read_reg/write_reg 回调成功时保存零。void 的 delay_ms 回调与本地
+ * 校验错误不改变保存值。@p device 为 NULL 时同样返回零。这不是
+ * 持久化的错误历史。
  */
 int32_t aw32257_get_last_port_error(const aw32257_t * device);
 
 /**
- * @brief Read one documented register after successful initialization.
+ * @brief 初始化成功后读取一个手册内寄存器。
  *
- * This diagnostic API accepts REG00 through REG0A. Deliberately no matching
- * arbitrary-register write API is exposed.
+ * 该诊断 API 接受 REG00 到 REG0A。刻意不提供对应的任意寄存器
+ * 写入 API。
  */
 aw32257_status_t aw32257_read_register(aw32257_t * device,
                                         uint8_t register_address,
                                         uint8_t * value);
 
-/** @brief Read and validate REG03, committing output only on success. */
+/** @brief 读取并校验 REG03，仅在完全成功时提交输出。 */
 aw32257_status_t aw32257_read_device_info(aw32257_t * device,
                                            aw32257_device_info_t * device_info);
 
-/** @brief Read the sequential REG00/REG05/REG09 status snapshot. */
+/** @brief 顺序读取 REG00/REG05/REG09 状态快照。 */
 aw32257_status_t aw32257_read_status(aw32257_t * device,
                                       aw32257_status_snapshot_t * snapshot);
 
-/** @brief Read a sequential, all-or-nothing configuration snapshot. */
+/** @brief 顺序读取全有或全无的配置快照。 */
 aw32257_status_t aw32257_read_configuration(aw32257_t * device,
                                              aw32257_config_snapshot_t * snapshot);
 
-/** @brief Enable or disable the open-drain STAT output through REG00 RMW. */
+/** @brief 通过对 REG00 读-改-写，使能或关闭开漏 STAT 输出。 */
 aw32257_status_t aw32257_set_stat_output_enabled(aw32257_t * device, bool enabled);
 
-/** @brief Enable or disable charging while hiding REG01.CEN inversion. */
+/** @brief 使能或关闭充电，内部屏蔽 REG01.CEN 的反相语义。 */
 aw32257_status_t aw32257_set_charge_enabled(aw32257_t * device, bool enabled);
 
-/** @brief Enable or disable charge termination through REG01 RMW. */
+/** @brief 通过对 REG01 读-改-写，使能或关闭充电终止判定。 */
 aw32257_status_t aw32257_set_termination_enabled(aw32257_t * device, bool enabled);
 
-/** @brief Request charge, high-impedance, or boost mode through REG01. */
+/** @brief 通过 REG01 请求充电、高阻或升压模式。 */
 aw32257_status_t aw32257_set_mode(aw32257_t * device, aw32257_mode_t mode);
 
-/** @brief Set an exact 3500..4500 mV, 20 mV-step VOREG value. */
+/** @brief 设置精确的 3500..4500 mV、20 mV 步进 VOREG 值。 */
 aw32257_status_t aw32257_set_charge_voltage_mv(aw32257_t * device,
                                                 uint16_t voltage_mv);
 
-/** @brief Set the fast-charge current register code, independent of RSNS. */
+/** @brief 设置快充电流寄存器码点，与 RSNS 无关。 */
 aw32257_status_t aw32257_set_fast_charge_current(aw32257_t * device,
                                                   aw32257_current_code_t current_code);
 
-/** @brief Set the termination-current register code, independent of RSNS. */
+/** @brief 设置充电终止电流寄存器码点，与 RSNS 无关。 */
 aw32257_status_t aw32257_set_termination_current(aw32257_t * device,
                                                   aw32257_term_current_code_t current_code);
 
-/** @brief Set an exact 4250..4775 mV, 75 mV-step DPM value. */
+/** @brief 设置精确的 4250..4775 mV、75 mV 步进 DPM 值。 */
 aw32257_status_t aw32257_set_dpm_voltage_mv(aw32257_t * device,
                                              uint16_t voltage_mv);
 
 /**
- * @brief Set CTA and recharge fields after full local validation.
+ * @brief 完成本地校验后设置 CTA 与再充电字段。
  *
- * Combinations whose valid_periods times deglitch_ms exceeds the documented
- * 256 ms electrical-characteristic limit are rejected without bus access.
+ * valid_periods 乘 deglitch_ms 超出手册电气特性 256 ms 上限的组合，
+ * 不访问总线直接拒绝。
  */
 aw32257_status_t aw32257_set_termination_config(aw32257_t * device,
                                                  const aw32257_termination_config_t * config);
 
-/** @brief Configure use and active polarity of the external OTG pin. */
+/** @brief 配置外部 OTG 引脚的启用与有效极性。 */
 aw32257_status_t aw32257_configure_otg_pin(aw32257_t * device,
                                             bool enabled,
                                             bool active_high);
 
-/** @brief Set boost output and symbolic power-train driver fields. */
+/** @brief 设置升压输出与符号化功率级驱动字段。 */
 aw32257_status_t aw32257_set_boost_config(aw32257_t * device,
                                            const aw32257_boost_config_t * config);
 
-/** @brief Look up the datasheet current table for a verified 33 mOhm RSNS. */
+/** @brief 对确认使用 33 mOhm RSNS 的设计查表数据手册电流表。 */
 aw32257_status_t aw32257_current_code_to_ma_33mohm(
     aw32257_current_code_t current_code,
     uint16_t * current_ma);
 
-/** @brief Look up the termination table for a verified 33 mOhm RSNS. */
+/** @brief 对确认使用 33 mOhm RSNS 的设计查表终止电流表。 */
 aw32257_status_t aw32257_termination_current_code_to_ma_33mohm(
     aw32257_term_current_code_t current_code,
     uint16_t * current_ma);

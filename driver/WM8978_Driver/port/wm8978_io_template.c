@@ -1,10 +1,10 @@
 /*
  * @file    wm8978_io_template.c
- * @brief   WM8978 fixed porting-contract template
- * @details Copy this file into the board project as wm8978_io.c and replace
- *          the stubs with the validated platform I2C/GPIO and delay calls.
- *          The control frame is two bytes; the core supplies the unshifted
- *          WM8978 frame and the board owns the physical 2-wire/3-wire bus.
+ * @brief   WM8978 固定移植契约模板
+ * @details 把本文件复制进板级工程并改名为 wm8978_io.c，用经平台
+ *          验证的 I2C/GPIO 与延时调用替换这些桩实现。
+ *          控制帧为两个字节；核心提供未移位的 WM8978 帧，物理
+ *          2 线/3 线总线由板级负责。
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -22,13 +22,13 @@ int32_t wm8978_io_write_control(void *io_ctx,
     (void)timeout_ms;
 
     /*
-     * 2-wire pseudo-code:
+     * 2 线伪代码：
      *   i2c_write(0x1A, { first_byte, second_byte }, 2, timeout_ms);
-     * Return WM8978_IO_OK only after both data ACKs and STOP complete.
-     * For 3-wire, shift both bytes MSB first while CSB is active and latch
-     * them at CSB rising edge. Every wait must be bounded by timeout_ms.
+     * 仅在两个数据字节均 ACK 且 STOP 完成后返回 WM8978_IO_OK。
+     * 3 线模式下，CSB 有效期间按 MSB 在前移出两个字节，并在 CSB
+     * 上升沿锁存。所有等待都必须受 timeout_ms 约束。
      */
-    return WM8978_IO_ERROR; /* Stub: not yet ported. */
+    return WM8978_IO_ERROR; /* 桩：尚未移植。 */
 }
 
 void wm8978_io_delay_ms(void *io_ctx, uint32_t milliseconds)
@@ -36,5 +36,5 @@ void wm8978_io_delay_ms(void *io_ctx, uint32_t milliseconds)
     (void)io_ctx;
     (void)milliseconds;
 
-    /* Replace with a board delay that is never shorter than milliseconds. */
+    /* 替换为绝不短于 milliseconds 的板级延时。 */
 }

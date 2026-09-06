@@ -1,6 +1,6 @@
 /**
  * @file    test_aw32257.c
- * @brief   Mock-I2C unit tests for the portable AW32257 driver
+ * @brief   AW32257 可移植驱动的模拟 I2C 单元测试
  *
  * SPDX-License-Identifier: WTFPL
  */

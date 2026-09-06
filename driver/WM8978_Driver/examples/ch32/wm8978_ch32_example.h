@@ -1,6 +1,6 @@
 /**
  * @file    wm8978_ch32_example.h
- * @brief   Declaration for the explicit CH32 WM8978 initialization example
+ * @brief   显式 CH32 WM8978 初始化示例的声明
  *
  * SPDX-License-Identifier: WTFPL
  */

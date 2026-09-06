@@ -1,6 +1,6 @@
 /**
  * @file    wm8978.c
- * @brief   Portable C99 WM8978 driver implementation
+ * @brief   WM8978 可移植 C99 驱动实现
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-13
@@ -125,7 +125,7 @@ static const uint16_t wm8978_reset_defaults[WM8978_REGISTER_SPACE_SIZE] =
     [WM8978_REG_OUT4_MIXER] = WM8978_R57_RESET_VALUE
 };
 
-/* Bits not present in these masks must remain at their reset value. */
+/* 掩码未覆盖的位必须保持复位值。 */
 static const uint16_t wm8978_writable_masks[WM8978_REGISTER_SPACE_SIZE] =
 {
     [WM8978_REG_SOFTWARE_RESET] = 0x1FFU,
@@ -182,7 +182,7 @@ static const uint16_t wm8978_writable_masks[WM8978_REGISTER_SPACE_SIZE] =
     [WM8978_REG_OUT4_MIXER] = 0x07FU
 };
 
-/* Hardware non-latched triggers plus NFU's conservative one-shot policy. */
+/* 硬件非锁存触发位，以及 NFU 的保守一次性策略。 */
 static const uint16_t wm8978_transient_masks[WM8978_REGISTER_SPACE_SIZE] =
 {
     [WM8978_REG_LEFT_DAC_VOLUME] = 0x100U,

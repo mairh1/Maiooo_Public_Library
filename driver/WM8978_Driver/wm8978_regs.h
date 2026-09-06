@@ -1,11 +1,11 @@
 /**
  * @file    wm8978_regs.h
- * @brief   WM8978 register addresses, fields, and reset values
+ * @brief   WM8978 寄存器地址、字段与复位值
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-13
  *
- * Values are derived from WM8978 Production Data, Rev 4.5, October 2011.
+ * 数值取自 WM8978 Production Data, Rev 4.5, October 2011。
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 
-/* Control-interface constants. */
+/* 控制接口常量。 */
 #define WM8978_I2C_ADDRESS_7BIT                 ((uint8_t)0x1AU)
 #define WM8978_I2C_WRITE_ADDRESS_8BIT           ((uint8_t)0x34U)
 #define WM8978_CONTROL_2WIRE_MAX_SCLK_HZ        ((uint32_t)526000UL)
@@ -28,7 +28,7 @@
 #define WM8978_FIELD_GET(mask, shift, value) \
     ((uint16_t)((((uint16_t)(value)) & (uint16_t)(mask)) >> (shift)))
 
-/* Implemented register addresses from Table 69. Gaps are reserved. */
+/* 表 69 中已实现的寄存器地址。空缺为保留。 */
 #define WM8978_REG_SOFTWARE_RESET               ((uint8_t)0x00U)
 #define WM8978_REG_POWER_MANAGEMENT_1           ((uint8_t)0x01U)
 #define WM8978_REG_POWER_MANAGEMENT_2           ((uint8_t)0x02U)
@@ -82,7 +82,7 @@
 #define WM8978_REG_OUT3_MIXER                    ((uint8_t)0x38U)
 #define WM8978_REG_OUT4_MIXER                    ((uint8_t)0x39U)
 
-/* Reset values. R0 is a non-latched command and has no hardware reset value. */
+/* 复位值。R0 为非锁存命令，无硬件复位值。 */
 #define WM8978_R00_RESET_VALUE                   ((uint16_t)0x000U)
 #define WM8978_R01_RESET_VALUE                   ((uint16_t)0x000U)
 #define WM8978_R02_RESET_VALUE                   ((uint16_t)0x000U)
@@ -136,7 +136,7 @@
 #define WM8978_R56_RESET_VALUE                   ((uint16_t)0x001U)
 #define WM8978_R57_RESET_VALUE                   ((uint16_t)0x001U)
 
-/* R1 - Power management 1. */
+/* R1 - 电源管理 1。 */
 #define WM8978_R01_BUFDCOPEN                     ((uint16_t)0x100U)
 #define WM8978_R01_OUT4MIXEN                     ((uint16_t)0x080U)
 #define WM8978_R01_OUT3MIXEN                     ((uint16_t)0x040U)
@@ -147,7 +147,7 @@
 #define WM8978_R01_VMIDSEL_MASK                  ((uint16_t)0x003U)
 #define WM8978_R01_VMIDSEL_SHIFT                 ((uint8_t)0U)
 
-/* R2 - Power management 2. */
+/* R2 - 电源管理 2。 */
 #define WM8978_R02_ROUT1EN                       ((uint16_t)0x100U)
 #define WM8978_R02_LOUT1EN                       ((uint16_t)0x080U)
 #define WM8978_R02_SLEEP                         ((uint16_t)0x040U)
@@ -158,7 +158,7 @@
 #define WM8978_R02_ADCENR                        ((uint16_t)0x002U)
 #define WM8978_R02_ADCENL                        ((uint16_t)0x001U)
 
-/* R3 - Power management 3. */
+/* R3 - 电源管理 3。 */
 #define WM8978_R03_OUT4EN                        ((uint16_t)0x100U)
 #define WM8978_R03_OUT3EN                        ((uint16_t)0x080U)
 #define WM8978_R03_LOUT2EN                       ((uint16_t)0x040U)
@@ -168,7 +168,7 @@
 #define WM8978_R03_DACENR                        ((uint16_t)0x002U)
 #define WM8978_R03_DACENL                        ((uint16_t)0x001U)
 
-/* R4 - Digital audio interface. */
+/* R4 - 数字音频接口。 */
 #define WM8978_R04_BCP                           ((uint16_t)0x100U)
 #define WM8978_R04_LRP                           ((uint16_t)0x080U)
 #define WM8978_R04_WL_MASK                       ((uint16_t)0x060U)
@@ -179,7 +179,7 @@
 #define WM8978_R04_ADCLRSWAP                     ((uint16_t)0x002U)
 #define WM8978_R04_MONO                          ((uint16_t)0x001U)
 
-/* R5 - Companding and loopback. */
+/* R5 - 压扩与回环。 */
 #define WM8978_R05_WL8                           ((uint16_t)0x020U)
 #define WM8978_R05_DAC_COMP_MASK                 ((uint16_t)0x018U)
 #define WM8978_R05_DAC_COMP_SHIFT                ((uint8_t)3U)
@@ -187,7 +187,7 @@
 #define WM8978_R05_ADC_COMP_SHIFT                ((uint8_t)1U)
 #define WM8978_R05_LOOPBACK                      ((uint16_t)0x001U)
 
-/* R6 - Clock generation. */
+/* R6 - 时钟生成。 */
 #define WM8978_R06_CLKSEL                        ((uint16_t)0x100U)
 #define WM8978_R06_MCLKDIV_MASK                  ((uint16_t)0x0E0U)
 #define WM8978_R06_MCLKDIV_SHIFT                 ((uint8_t)5U)
@@ -195,19 +195,19 @@
 #define WM8978_R06_BCLKDIV_SHIFT                 ((uint8_t)2U)
 #define WM8978_R06_MS                            ((uint16_t)0x001U)
 
-/* R7 - Filter sample-rate coefficients and zero-cross timeout clock. */
+/* R7 - 滤波器采样率系数与过零超时时钟。 */
 #define WM8978_R07_SR_MASK                       ((uint16_t)0x00EU)
 #define WM8978_R07_SR_SHIFT                      ((uint8_t)1U)
 #define WM8978_R07_SLOWCLKEN                     ((uint16_t)0x001U)
 
-/* R8 - GPIO1. */
+/* R8 - GPIO1。 */
 #define WM8978_R08_OPCLKDIV_MASK                 ((uint16_t)0x030U)
 #define WM8978_R08_OPCLKDIV_SHIFT                ((uint8_t)4U)
 #define WM8978_R08_GPIO1POL                      ((uint16_t)0x008U)
 #define WM8978_R08_GPIO1SEL_MASK                 ((uint16_t)0x007U)
 #define WM8978_R08_GPIO1SEL_SHIFT                ((uint8_t)0U)
 
-/* R9 and R13 - Jack detection. */
+/* R9 与 R13 - 插入检测(Jack detection)。 */
 #define WM8978_R09_JD_VMID_MASK                  ((uint16_t)0x180U)
 #define WM8978_R09_JD_VMID_SHIFT                 ((uint8_t)7U)
 #define WM8978_R09_JD_EN                         ((uint16_t)0x040U)
@@ -218,19 +218,19 @@
 #define WM8978_R13_JD_EN0_MASK                   ((uint16_t)0x00FU)
 #define WM8978_R13_JD_EN0_SHIFT                  ((uint8_t)0U)
 
-/* R10 - DAC control. SOFTMUTE polarity conflicts within Rev 4.5. */
+/* R10 - DAC 控制。SOFTMUTE 极性在 Rev 4.5 内部存在冲突。 */
 #define WM8978_R10_SOFTMUTE_RAW                  ((uint16_t)0x040U)
 #define WM8978_R10_DACOSR128                     ((uint16_t)0x008U)
 #define WM8978_R10_AMUTE                         ((uint16_t)0x004U)
 #define WM8978_R10_DACPOLR                       ((uint16_t)0x002U)
 #define WM8978_R10_DACPOLL                       ((uint16_t)0x001U)
 
-/* R11/R12 and R15/R16 - Converter digital volumes. */
+/* R11/R12 与 R15/R16 - 转换器数字音量。 */
 #define WM8978_CONVERTER_VU                      ((uint16_t)0x100U)
 #define WM8978_CONVERTER_VOLUME_MASK             ((uint16_t)0x0FFU)
 #define WM8978_CONVERTER_VOLUME_SHIFT            ((uint8_t)0U)
 
-/* R14 - ADC control. */
+/* R14 - ADC 控制。 */
 #define WM8978_R14_HPFEN                         ((uint16_t)0x100U)
 #define WM8978_R14_HPFAPP                        ((uint16_t)0x080U)
 #define WM8978_R14_HPFCUT_MASK                   ((uint16_t)0x070U)
@@ -239,7 +239,7 @@
 #define WM8978_R14_ADCRPOL                       ((uint16_t)0x002U)
 #define WM8978_R14_ADCLPOL                       ((uint16_t)0x001U)
 
-/* R18-R22 - Five-band equalizer. */
+/* R18-R22 - 五段均衡器。 */
 #define WM8978_R18_EQ3DMODE                      ((uint16_t)0x100U)
 #define WM8978_R19_EQ2BW                         ((uint16_t)0x100U)
 #define WM8978_R20_EQ3BW                         ((uint16_t)0x100U)
@@ -249,7 +249,7 @@
 #define WM8978_EQ_G_MASK                         ((uint16_t)0x01FU)
 #define WM8978_EQ_G_SHIFT                        ((uint8_t)0U)
 
-/* R24/R25 - DAC limiter. */
+/* R24/R25 - DAC 限幅器。 */
 #define WM8978_R24_LIMEN                         ((uint16_t)0x100U)
 #define WM8978_R24_LIMDCY_MASK                   ((uint16_t)0x0F0U)
 #define WM8978_R24_LIMDCY_SHIFT                  ((uint8_t)4U)
@@ -260,12 +260,12 @@
 #define WM8978_R25_LIMBOOST_MASK                 ((uint16_t)0x00FU)
 #define WM8978_R25_LIMBOOST_SHIFT                ((uint8_t)0U)
 
-/* R27-R30 - Notch filter. NFU is treated as a one-shot update request. */
+/* R27-R30 - 陷波滤波器。NFU 按一次性更新请求处理。 */
 #define WM8978_NOTCH_NFU                         ((uint16_t)0x100U)
 #define WM8978_R27_NFEN                          ((uint16_t)0x080U)
 #define WM8978_NOTCH_COEFFICIENT_MASK            ((uint16_t)0x07FU)
 
-/* R32-R35 - ALC and noise gate. */
+/* R32-R35 - ALC 与噪声门。 */
 #define WM8978_R32_ALCSEL_MASK                   ((uint16_t)0x180U)
 #define WM8978_R32_ALCSEL_SHIFT                  ((uint8_t)7U)
 #define WM8978_R32_ALCMAXGAIN_MASK               ((uint16_t)0x038U)
@@ -285,7 +285,7 @@
 #define WM8978_R35_NGTH_MASK                     ((uint16_t)0x007U)
 #define WM8978_R35_NGTH_SHIFT                    ((uint8_t)0U)
 
-/* R36-R39 - PLL ratio. */
+/* R36-R39 - PLL 比率。 */
 #define WM8978_R36_PLLPRESCALE                   ((uint16_t)0x010U)
 #define WM8978_R36_PLLN_MASK                     ((uint16_t)0x00FU)
 #define WM8978_R36_PLLN_SHIFT                    ((uint8_t)0U)
@@ -293,7 +293,7 @@
 #define WM8978_R38_PLLK_MASK                     ((uint16_t)0x1FFU)
 #define WM8978_R39_PLLK_MASK                     ((uint16_t)0x1FFU)
 
-/* R41/R43/R44 - 3D, beep, and analogue input selection. */
+/* R41/R43/R44 - 3D、蜂鸣与模拟输入选择。 */
 #define WM8978_R41_DEPTH3D_MASK                  ((uint16_t)0x00FU)
 #define WM8978_R43_MUTERPGA2INV                  ((uint16_t)0x020U)
 #define WM8978_R43_INVROUT2                      ((uint16_t)0x010U)
@@ -308,20 +308,20 @@
 #define WM8978_R44_LIN2INPPGA                    ((uint16_t)0x002U)
 #define WM8978_R44_LIP2INPPGA                    ((uint16_t)0x001U)
 
-/* R45/R46 - Input PGA. UPDATE is a non-latched trigger. */
+/* R45/R46 - 输入 PGA。UPDATE 为非锁存触发位。 */
 #define WM8978_INPUT_PGA_UPDATE                  ((uint16_t)0x100U)
 #define WM8978_INPUT_PGA_ZC                      ((uint16_t)0x080U)
 #define WM8978_INPUT_PGA_MUTE                    ((uint16_t)0x040U)
 #define WM8978_INPUT_PGA_VOLUME_MASK             ((uint16_t)0x03FU)
 
-/* R47/R48 - ADC boost paths. */
+/* R47/R48 - ADC 升压(boost)通路。 */
 #define WM8978_ADC_BOOST_PGA                     ((uint16_t)0x100U)
 #define WM8978_ADC_BOOST_STAGE2_MASK             ((uint16_t)0x070U)
 #define WM8978_ADC_BOOST_STAGE2_SHIFT            ((uint8_t)4U)
 #define WM8978_ADC_BOOST_AUX_MASK                ((uint16_t)0x007U)
 #define WM8978_ADC_BOOST_AUX_SHIFT               ((uint8_t)0U)
 
-/* R49 - Output controls. */
+/* R49 - 输出控制。 */
 #define WM8978_R49_DACL2RMIX                     ((uint16_t)0x040U)
 #define WM8978_R49_DACR2LMIX                     ((uint16_t)0x020U)
 #define WM8978_R49_OUT4BOOST                     ((uint16_t)0x010U)
@@ -330,7 +330,7 @@
 #define WM8978_R49_TSDEN                         ((uint16_t)0x002U)
 #define WM8978_R49_VROI                          ((uint16_t)0x001U)
 
-/* R50/R51 - Output mixers. */
+/* R50/R51 - 输出混音器。 */
 #define WM8978_MIX_AUXVOL_MASK                   ((uint16_t)0x1C0U)
 #define WM8978_MIX_AUXVOL_SHIFT                  ((uint8_t)6U)
 #define WM8978_MIX_AUX2MIX                      ((uint16_t)0x020U)
@@ -339,13 +339,13 @@
 #define WM8978_MIX_BYP2MIX                      ((uint16_t)0x002U)
 #define WM8978_MIX_DAC2MIX                      ((uint16_t)0x001U)
 
-/* R52-R55 - Headphone/speaker outputs. VU is a non-latched trigger. */
+/* R52-R55 - 耳机/喇叭输出。VU 为非锁存触发位。 */
 #define WM8978_OUTPUT_VU                         ((uint16_t)0x100U)
 #define WM8978_OUTPUT_ZC                         ((uint16_t)0x080U)
 #define WM8978_OUTPUT_MUTE                       ((uint16_t)0x040U)
 #define WM8978_OUTPUT_VOLUME_MASK                ((uint16_t)0x03FU)
 
-/* R56/R57 - OUT3/OUT4 mixers. */
+/* R56/R57 - OUT3/OUT4 混音器。 */
 #define WM8978_R56_OUT3MUTE                      ((uint16_t)0x040U)
 #define WM8978_R56_OUT4_2OUT3                    ((uint16_t)0x008U)
 #define WM8978_R56_BYPL2OUT3                     ((uint16_t)0x004U)

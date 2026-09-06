@@ -1,6 +1,6 @@
 /**
  * @file    aw32257.c
- * @brief   Portable C99 driver implementation for AW32257
+ * @brief   AW32257 可移植 C99 驱动实现
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-13
@@ -13,7 +13,7 @@
 
 #include <stddef.h>
 
-/* Values from the AW32257 V1.5 register tables for RSNS = 33 mOhm. */
+/* 数值取自 AW32257 V1.5 手册寄存器表，对应 RSNS = 33 mOhm。 */
 static const uint16_t aw32257_current_ma_33mohm[16] =
 {
     496, 620, 868, 992, 1116, 1240, 1364, 1488,
@@ -509,7 +509,7 @@ aw32257_status_t aw32257_power_on_init(aw32257_t * device,
         ((uint8_t)safety->max_charge_current << AW32257_REG06_SAFE_CURRENT_SHIFT) |
         safe_voltage_code);
 
-    /* REG06 must be the first bus transaction after a real hardware POR. */
+    /* REG06 必须是真实硬件 POR 之后的第一个总线事务。 */
     status = aw32257_port_write(device,
                                 AW32257_REG_SAFETY_LIMIT,
                                 expected_safety);
@@ -588,7 +588,7 @@ aw32257_status_t aw32257_soft_reset(aw32257_t * device)
                                 AW32257_REG_CHARGE_CURRENT,
                                 AW32257_REG04_SOFT_RESET_MASK);
 
-    /* An ACK may be lost after the device accepted RESET, so always wait. */
+    /* 器件接受 RESET 后 ACK 可能丢失，因此无条件等待。 */
     aw32257_io_delay_ms(device->io_ctx, AW32257_SOFT_RESET_DELAY_MS);
 
     return status;

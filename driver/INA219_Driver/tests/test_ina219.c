@@ -1,19 +1,17 @@
 /**
  * @file    test_ina219.c
- * @brief   Mock-I2C unit tests for the portable INA219 driver core
+ * @brief   INA219 可移植驱动核心的模拟 I2C 单元测试
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-27
  *
  * @details
- * Implements the ina219_io.h contract against an in-memory register image
- * with hardware-faithful semantics (config RST self-clear + register file
- * restore, MODE writes / power reads clearing CNVR, calibration bit-0
- * forced low, read-only measurement registers), then exercises the public
- * API. Conversion anchors use the worked example from the datasheet
- * (Table 8: 2 mOhm shunt, 1 mA LSB, cal 0x5000, 10 A / 119.8 W). Designed
- * to run on the host or under the MounRiver RV32 simulator
- * (riscv32-wch-elf-run). Exit code 0 = all checks passed.
+ * 基于内存寄存器镜像实现 ina219_io.h 契约，并模拟硬件语义（配置
+ * RST 自清零 + 寄存器组恢复、MODE 写入/功率读取清 CNVR、校准寄存
+ * 器 bit0 强制为低、测量寄存器只读），随后逐一调用公共 API。换算
+ * 锚点使用数据手册的算例（表 8：2 mOhm 检流电阻、1 mA LSB、
+ * 校准值 0x5000、10 A / 119.8 W）。可在主机或 MounRiver RV32
+ * 模拟器（riscv32-wch-elf-run）上运行。退出码 0 = 全部检查通过。
  *
  * SPDX-License-Identifier: WTFPL
  */

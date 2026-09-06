@@ -1,6 +1,6 @@
 /**
  * @file    aw32257_ch32_port_example.c
- * @brief   SDK-neutral CH32 BSP bridge example for the AW32257 driver
+ * @brief   AW32257 驱动的 SDK 无关 CH32 BSP 桥接示例
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-13

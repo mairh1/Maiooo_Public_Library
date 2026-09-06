@@ -1,17 +1,17 @@
 /**
  * @file    ina219_ch32_example.c
- * @brief   INA219 driver usage example on CH32 (any family)
+ * @brief   CH32 上的 INA219 驱动使用示例（任意家族）
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-27
  *
  * @details
- * Complete application flow: adapter wiring + init (1-ohm shunt defaults
- * come from ina219_conf.h) -> periodic 1 Hz sampling in continuous mode ->
- * optional single-shot trigger path -> power-down before stop mode.
+ * 完整应用流程：适配器接线 + 初始化（1 欧姆检流电阻默认值来自
+ * ina219_conf.h）-> 连续模式 1 Hz 周期采样 -> 可选单次触发路径 ->
+ * 停机模式前下电。
  *
- * The board I2C callbacks referenced here (board_i2c_mem_write/read,
- * board_delay_ms) live in the project BSP; see this folder's README.md.
+ * 此处引用的板级 I2C 回调（board_i2c_mem_write/read、board_delay_ms）
+ * 位于工程 BSP 中；见本目录 README.md。
  *
  * SPDX-License-Identifier: WTFPL
  */
