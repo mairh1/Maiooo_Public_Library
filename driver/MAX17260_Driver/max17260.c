@@ -922,7 +922,7 @@ max17260_result_t max17260_configure_model(max17260_dev_t *dev,
     {
         return MAX17260_ERR_PARAM;
     }
-    if (vempty_mv > MAX17260_VEMPTY_VE_MASK >> MAX17260_VEMPTY_VE_SHIFT
+    if (vempty_mv > (MAX17260_VEMPTY_VE_MASK >> MAX17260_VEMPTY_VE_SHIFT)
             * MAX17260_VEMPTY_LSB_MV)
     {
         return MAX17260_ERR_PARAM;
@@ -1131,7 +1131,7 @@ max17260_result_t max17260_set_voltage_alerts(max17260_dev_t *dev,
                    max17260_clamp_u16(min_mv, 0u, 5100u), 20u);
     code_max = (uint16_t)max17260_round_div_u32(
                    max17260_clamp_u16(max_mv, 0u, 5100u), 20u);
-    val = (uint16_t)((code_min << MAX17260_VALRTTH_MIN_SHIFT) | code_max);
+    val = (uint16_t)((code_max << MAX17260_VALRTTH_MAX_SHIFT) | code_min);
     return max17260_write_hw(dev, MAX17260_REG_VALRTTH, val);
 }
 

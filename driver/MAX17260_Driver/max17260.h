@@ -295,7 +295,10 @@ max17260_result_t max17260_read_age(max17260_dev_t *dev, uint8_t *age);
 
 /**
  * @brief   读芯片内部温度，单位 0.1℃（有符号）
- * @details DieTemp 寄存器（8 位地址 0x034），仅受芯片内部传感器影响。
+ * @details 实现读 Temp 寄存器（0x08）：Config.TSEL=0（默认）时 Temp 即内部 die
+ *          温度，与 DieTemp（0x034）同源，仅受芯片内部传感器影响。
+ * @note    若经寄存器级 API 将 Config.TSEL 置 1（外置热敏电阻），本函数返回的
+ *          是热敏温度而非 die 温度；此时请用 max17260_read_reg 直读 DieTemp（0x034）。
  * @param   dev        设备句柄。
  * @param   temp_x10   输出：内部温度 ×10 ℃。
  * @retval  max17260_result_t  OK 成功；ERR_PARAM 空指针；ERR_IO 通信失败。

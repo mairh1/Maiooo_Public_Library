@@ -106,7 +106,7 @@ extern "C" {
  * 复位（POR）默认值
  * ════════════════════════════════════════════════════════════════════════ */
 
-#define MAX17260_STATUS_POR         0x8082u
+#define MAX17260_STATUS_REG_POR     0x8082u
 #define MAX17260_VALRTTH_POR        0xFF00u
 #define MAX17260_TALRTTH_POR        0x7F80u
 #define MAX17260_SALRTTH_POR        0xFF00u
