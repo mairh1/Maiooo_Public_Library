@@ -6,8 +6,8 @@
  * @note    置 0 关闭某功能开关后，对应公共 API、核心实现与移植契约
  *          函数一起被 #if 裁剪，被裁剪 API 不再存在（编译期报错）。
  * @author  Maiooo
- * @version 1.0.0
- * @date    2026-09-02
+ * @version 2.0.0
+ * @date    2026-09-06
  */
 
 #ifndef MAX17260_CONF_H

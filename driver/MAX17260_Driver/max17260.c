@@ -6,8 +6,8 @@
  *          实现依据本目录数据手册（MAX17260, 19-100249; Rev 2; 7/24）。
  * @note    所有换算为定点运算，单位约定见 max17260.h 文件头。
  * @author  Maiooo
- * @version 1.0.0
- * @date    2026-09-02
+ * @version 2.0.0
+ * @date    2026-09-06
  */
 
 #include "max17260.h"
@@ -16,13 +16,7 @@
 
 /* ══════════════════════════════════════════════════════════════════════════
  * 私有常量与宏
- * ════════════════════════════════════════════════════════════════════════ */
-
-#if MAX17260_VARIANT == MAX17260_VARIANT_B_SERIES
-#define MAX17260_I2C_ADDR    MAX17260_I2C_ADDR_ALT
-#else
-#define MAX17260_I2C_ADDR    MAX17260_I2C_ADDR_DEFAULT
-#endif
+ * ══════════════════════════════════════════════════════════════════════════ */
 
 #if MAX17260_THREAD_SAFE
 #define MAX17260_LOCK()      max17260_io_lock()    /**< 进入临界区 */
@@ -37,10 +31,6 @@
     if ((d) == NULL) return MAX17260_ERR_PARAM; \
     if ((d)->inited == 0u) return MAX17260_ERR_NOT_READY; \
 } while (0)
-
-/* 换算常量：手册 Table 2 Standard Resolutions，分子用整数表达。 */
-#define MAX17260_UV_PER_VCELL_LSB    78u       /**< VCell 78.125µV/LSB 分子（×10 后整） */
-#define MAX17260_UV_PER_VCELL_DEN    10u       /**< VCell 78.125µV/LSB 分母（×10 后） */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * 私有函数 —— 定点换算辅助
@@ -254,15 +244,12 @@ static max17260_result_t max17260_current_from_raw(int16_t raw, int32_t *out)
     /* µV = raw × 1.5625µV（手册 Table 2）= raw × 15625/10000 */
     uv = (int32_t)raw * 15625 / 10000;
 
-    if (MAX17260_RSENSE_MOHM == 0)
-    {
-        *out = uv;
-    }
-    else
-    {
-        /* mA = µV × 1000 / RSENSE_mΩ */
-        *out = uv * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
-    }
+#if MAX17260_RSENSE_MOHM == 0
+    *out = uv;
+#else
+    /* mA = µV × 1000 / RSENSE_mΩ */
+    *out = uv * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
+#endif
     return MAX17260_OK;
 }
 
@@ -284,6 +271,93 @@ static int16_t max17260_current_to_raw(int32_t val)
     }
     /* µV → LSB：raw = uv × 10000 / 15625 */
     return (int16_t)((int32_t)uv * 10000 / 15625);
+}
+
+/**
+ * @brief   电压 LSB → mV（78.125µV/LSB，四舍五入）
+ */
+static uint32_t max17260_vcell_raw_to_mv(uint16_t raw)
+{
+    /* mV = raw × 78.125µV / 1000，放大 10 倍避免小数：× 781 / 10000 */
+    return max17260_round_div_u32((uint32_t)raw * 781u, 10000u);
+}
+
+/**
+ * @brief   温度 LSB → 0.1℃（1/256℃/LSB，四舍五入）
+ */
+static int16_t max17260_temp_raw_to_x10(int16_t raw)
+{
+    /* 0.1℃ = raw × 10 / 256 = raw × 5 / 128 */
+    return (int16_t)max17260_round_div_i32((int32_t)raw * 5, 128);
+}
+
+/**
+ * @brief   读 TTE / TTF 类时间寄存器并换算为秒（5.625s/LSB）
+ * @param   dev      设备句柄（调用方已做过参数检查）。
+ * @param   reg      寄存器基地址（REG_TTE 或 REG_TTF）。
+ * @param   seconds  输出：换算后的秒数。
+ * @retval  max17260_result_t  OK 成功；ERR_IO 通信失败。
+ */
+static max17260_result_t max17260_read_time_sec(max17260_dev_t *dev,
+                                                uint8_t reg,
+                                                uint32_t *seconds)
+{
+    max17260_result_t res;
+    uint16_t raw;
+
+    res = max17260_read_hw(dev, reg, &raw);
+    if (res == MAX17260_OK)
+    {
+        /* s = raw × 5.625 = raw × 5625 / 1000 */
+        *seconds = max17260_round_div_u32((uint32_t)raw * 5625u, 1000u);
+    }
+    return res;
+}
+
+/**
+ * @brief   功率（µV² / mW）单位转换
+ * @details MAX17260_RSENSE_MOHM=0 时返回原始 µV²；否则换算 mW。
+ */
+static max17260_result_t max17260_power_from_raw(int16_t raw, int32_t *out)
+{
+    int32_t uv2;
+
+    /* µV² = raw × 8µV²/RSENSE（手册 Table 2） */
+    uv2 = (int32_t)raw * 8;
+
+#if MAX17260_RSENSE_MOHM == 0
+    *out = uv2;
+#else
+    /* mW = µV² × 1000 / RSENSE_mΩ
+     * 由于 µV² 在 RSENSE=10mΩ 时可达 8 × 32768 = 262144，
+     * × 1000 后约 2.6e8，仍在 int32 范围。 */
+    *out = uv2 * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
+#endif
+    return MAX17260_OK;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 私有函数 —— 8 位高低字段对编码
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * @brief   编码 Max/Min 8 位字段对（Max 高 8 位，Min 低 8 位）
+ * @details VAlrtTh / TAlrtTh / SAlrtTh / IAlrtTh 与 MaxMinVolt /
+ *          MaxMinCurr / MaxMinTemp 寄存器布局一致，均为 Max 在高字节。
+ */
+static uint16_t max17260_pack_minmax8(uint8_t min_code, uint8_t max_code)
+{
+    return (uint16_t)(((uint16_t)max_code << 8u) | (uint16_t)min_code);
+}
+
+/**
+ * @brief   解码 Max/Min 8 位字段对（Max 高 8 位，Min 低 8 位）
+ */
+static void max17260_unpack_minmax8(uint16_t val, uint8_t *min_code,
+                                    uint8_t *max_code)
+{
+    *max_code = (uint8_t)(val >> 8u);
+    *min_code = (uint8_t)(val & 0xFFu);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -353,7 +427,12 @@ max17260_result_t max17260_is_por(max17260_dev_t *dev, bool *por)
  * API —— 2. 测量读取
  * ════════════════════════════════════════════════════════════════════════ */
 
-max17260_result_t max17260_read_vcell_raw(max17260_dev_t *dev, uint16_t *raw)
+/**
+ * @brief   读 VCell 原始值（内部换算用）
+ * @retval  max17260_result_t  OK 成功；ERR_PARAM 空指针；ERR_IO 通信失败。
+ */
+static max17260_result_t max17260_read_vcell_raw(max17260_dev_t *dev,
+                                                 uint16_t *raw)
 {
     if ((dev == NULL) || (raw == NULL))
     {
@@ -374,17 +453,21 @@ max17260_result_t max17260_read_vcell(max17260_dev_t *dev, uint32_t *mv)
     }
     MAX17260_CHK_DEV(dev);
 
-    res = max17260_read_hw(dev, MAX17260_REG_VCELL, &raw);
+    res = max17260_read_vcell_raw(dev, &raw);
     if (res == MAX17260_OK)
     {
-        /* mV = raw × 78.125µV / 1000 = raw × 78.125 / 1000
-         *  放大 10 倍避免小数：× 781 / 10000 */
-        *mv = max17260_round_div_u32((uint32_t)raw * 781u, 10000u);
+        /* 满量程 0~5119.92mV */
+        *mv = max17260_vcell_raw_to_mv(raw);
     }
     return res;
 }
 
-max17260_result_t max17260_read_soc_raw(max17260_dev_t *dev, uint16_t *raw)
+/**
+ * @brief   读 RepSOC 原始值（内部换算用）
+ * @retval  max17260_result_t  OK 成功；ERR_PARAM 空指针；ERR_IO 通信失败。
+ */
+static max17260_result_t max17260_read_soc_raw(max17260_dev_t *dev,
+                                               uint16_t *raw)
 {
     if ((dev == NULL) || (raw == NULL))
     {
@@ -405,7 +488,7 @@ max17260_result_t max17260_read_soc(max17260_dev_t *dev, uint8_t *percent)
     }
     MAX17260_CHK_DEV(dev);
 
-    res = max17260_read_hw(dev, MAX17260_REG_REPSOC, &raw);
+    res = max17260_read_soc_raw(dev, &raw);
     if (res == MAX17260_OK)
     {
         *percent = (uint8_t)((raw + 128u) >> 8);
@@ -425,7 +508,7 @@ max17260_result_t max17260_read_soc_precise(max17260_dev_t *dev,
     }
     MAX17260_CHK_DEV(dev);
 
-    res = max17260_read_hw(dev, MAX17260_REG_REPSOC, &raw);
+    res = max17260_read_soc_raw(dev, &raw);
     if (res == MAX17260_OK)
     {
         /* %×100 = raw × 100 / 256 = raw × 25 / 64 */
@@ -468,9 +551,7 @@ max17260_result_t max17260_read_temp(max17260_dev_t *dev, int16_t *temp_x10)
     res = max17260_read_temp_raw(dev, &raw);
     if (res == MAX17260_OK)
     {
-        /* 0.1℃ = raw × 10 / 256 = raw × 5 / 128 */
-        *temp_x10 = (int16_t)max17260_round_div_i32(
-                        (int32_t)raw * 5, 128);
+        *temp_x10 = max17260_temp_raw_to_x10(raw);
     }
     return res;
 }
@@ -513,7 +594,12 @@ max17260_result_t max17260_read_current(max17260_dev_t *dev, int32_t *ma)
     return res;
 }
 
-max17260_result_t max17260_read_repcap_raw(max17260_dev_t *dev, uint16_t *raw)
+/**
+ * @brief   读 RepCap 原始值（内部换算用）
+ * @retval  max17260_result_t  OK 成功；ERR_PARAM 空指针；ERR_IO 通信失败。
+ */
+static max17260_result_t max17260_read_repcap_raw(max17260_dev_t *dev,
+                                                  uint16_t *raw)
 {
     if ((dev == NULL) || (raw == NULL))
     {
@@ -564,7 +650,6 @@ max17260_result_t max17260_read_fullcaprep(max17260_dev_t *dev, uint32_t *mah)
 max17260_result_t max17260_read_tte(max17260_dev_t *dev, uint32_t *seconds)
 {
     max17260_result_t res;
-    uint16_t raw;
 
     if ((dev == NULL) || (seconds == NULL))
     {
@@ -572,19 +657,13 @@ max17260_result_t max17260_read_tte(max17260_dev_t *dev, uint32_t *seconds)
     }
     MAX17260_CHK_DEV(dev);
 
-    res = max17260_read_hw(dev, MAX17260_REG_TTE, &raw);
-    if (res == MAX17260_OK)
-    {
-        /* s = raw × 5.625 = raw × 5625 / 1000 */
-        *seconds = max17260_round_div_u32((uint32_t)raw * 5625u, 1000u);
-    }
+    res = max17260_read_time_sec(dev, MAX17260_REG_TTE, seconds);
     return res;
 }
 
 max17260_result_t max17260_read_ttf(max17260_dev_t *dev, uint32_t *seconds)
 {
     max17260_result_t res;
-    uint16_t raw;
 
     if ((dev == NULL) || (seconds == NULL))
     {
@@ -592,11 +671,7 @@ max17260_result_t max17260_read_ttf(max17260_dev_t *dev, uint32_t *seconds)
     }
     MAX17260_CHK_DEV(dev);
 
-    res = max17260_read_hw(dev, MAX17260_REG_TTF, &raw);
-    if (res == MAX17260_OK)
-    {
-        *seconds = max17260_round_div_u32((uint32_t)raw * 5625u, 1000u);
-    }
+    res = max17260_read_time_sec(dev, MAX17260_REG_TTF, seconds);
     return res;
 }
 
@@ -604,7 +679,6 @@ max17260_result_t max17260_read_power(max17260_dev_t *dev, int32_t *mw)
 {
     max17260_result_t res;
     int16_t raw;
-    int32_t uv2;
 
     if ((dev == NULL) || (mw == NULL))
     {
@@ -615,20 +689,7 @@ max17260_result_t max17260_read_power(max17260_dev_t *dev, int32_t *mw)
     res = max17260_read_hw(dev, MAX17260_REG_POWER, (uint16_t *)&raw);
     if (res == MAX17260_OK)
     {
-        /* µV² = raw × 8µV²/RSENSE（手册 Table 2） */
-        uv2 = (int32_t)raw * 8;
-
-        if (MAX17260_RSENSE_MOHM == 0)
-        {
-            *mw = uv2;
-        }
-        else
-        {
-            /* mW = µV² × 1000 / RSENSE_mΩ
-             * 由于 µV² 在 RSENSE=10mΩ 时可达 8 × 32768 = 262144，
-             * × 1000 后约 2.6e8，仍在 int32 范围。 */
-            *mw = uv2 * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
-        }
+        res = max17260_power_from_raw(raw, mw);
     }
     return res;
 }
@@ -680,8 +741,7 @@ max17260_result_t max17260_read_dietemp(max17260_dev_t *dev, int16_t *temp_x10)
     }
     /* DieTemp 与 Temp 在 TSEL=0 时同为内部 die 温度；
      * 0.1℃ 换算与 read_temp 一致 */
-    *temp_x10 = (int16_t)max17260_round_div_i32(
-                    (int32_t)raw * 5, 128);
+    *temp_x10 = max17260_temp_raw_to_x10(raw);
     return MAX17260_OK;
 }
 
@@ -703,7 +763,7 @@ max17260_result_t max17260_read_avg_vcell(max17260_dev_t *dev, uint32_t *mv)
     res = max17260_read_hw(dev, MAX17260_REG_AVGVCELL, &raw);
     if (res == MAX17260_OK)
     {
-        *mv = max17260_round_div_u32((uint32_t)raw * 781u, 10000u);
+        *mv = max17260_vcell_raw_to_mv(raw);
     }
     return res;
 }
@@ -741,8 +801,7 @@ max17260_result_t max17260_read_avg_temp(max17260_dev_t *dev, int16_t *temp_x10)
     res = max17260_read_hw(dev, MAX17260_REG_AVGTA, (uint16_t *)&raw);
     if (res == MAX17260_OK)
     {
-        *temp_x10 = (int16_t)max17260_round_div_i32(
-                        (int32_t)raw * 5, 128);
+        *temp_x10 = max17260_temp_raw_to_x10(raw);
     }
     return res;
 }
@@ -751,7 +810,6 @@ max17260_result_t max17260_read_avg_power(max17260_dev_t *dev, int32_t *mw)
 {
     max17260_result_t res;
     int16_t raw;
-    int32_t uv2;
 
     if ((dev == NULL) || (mw == NULL))
     {
@@ -762,15 +820,7 @@ max17260_result_t max17260_read_avg_power(max17260_dev_t *dev, int32_t *mw)
     res = max17260_read_hw(dev, MAX17260_REG_AVGPOWER, (uint16_t *)&raw);
     if (res == MAX17260_OK)
     {
-        uv2 = (int32_t)raw * 8;
-        if (MAX17260_RSENSE_MOHM == 0)
-        {
-            *mw = uv2;
-        }
-        else
-        {
-            *mw = uv2 * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
-        }
+        res = max17260_power_from_raw(raw, mw);
     }
     return res;
 }
@@ -791,10 +841,13 @@ max17260_result_t max17260_read_maxmin_volt(max17260_dev_t *dev,
     res = max17260_read_hw(dev, MAX17260_REG_MAXMINVOLT, &val);
     if (res == MAX17260_OK)
     {
+        uint8_t max_b;
+        uint8_t min_b;
+
         /* 8 位字段 × 20mV */
-        *max_mv = (uint32_t)(((val & MAX17260_MAXMINVOLT_MAX_MASK) >>
-                              MAX17260_MAXMINVOLT_MAX_SHIFT) * 20u);
-        *min_mv = (uint32_t)((val & MAX17260_MAXMINVOLT_MIN_MASK) * 20u);
+        max17260_unpack_minmax8(val, &min_b, &max_b);
+        *max_mv = (uint32_t)max_b * 20u;
+        *min_mv = (uint32_t)min_b * 20u;
     }
     return res;
 }
@@ -805,8 +858,6 @@ max17260_result_t max17260_read_maxmin_curr(max17260_dev_t *dev,
 {
     max17260_result_t res;
     uint16_t val;
-    int8_t max_raw;
-    int8_t min_raw;
 
     if ((dev == NULL) || (max_ma == NULL) || (min_ma == NULL))
     {
@@ -817,25 +868,22 @@ max17260_result_t max17260_read_maxmin_curr(max17260_dev_t *dev,
     res = max17260_read_hw(dev, MAX17260_REG_MAXMINCURR, &val);
     if (res == MAX17260_OK)
     {
-        /* 8 位补码字段，0.4mV/RSENSE/LSB */
-        max_raw = (int8_t)((val & MAX17260_MAXMINCURR_MAX_MASK) >>
-                           MAX17260_MAXMINCURR_MAX_SHIFT);
-        min_raw = (int8_t)(val & MAX17260_MAXMINCURR_MIN_MASK);
+        uint8_t max_b;
+        uint8_t min_b;
+        int32_t max_uv;
+        int32_t min_uv;
 
-        {
-            int32_t max_uv = (int32_t)max_raw * 400;          /* 0.4mV/LSB ×1000 = µV */
-            int32_t min_uv = (int32_t)min_raw * 400;
-            if (MAX17260_RSENSE_MOHM == 0)
-            {
-                *max_ma = max_uv;
-                *min_ma = min_uv;
-            }
-            else
-            {
-                *max_ma = max_uv * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
-                *min_ma = min_uv * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
-            }
-        }
+        /* 8 位补码字段，0.4mV/RSENSE/LSB（0.4mV/LSB ×1000 = µV） */
+        max17260_unpack_minmax8(val, &min_b, &max_b);
+        max_uv = (int32_t)(int8_t)max_b * 400;
+        min_uv = (int32_t)(int8_t)min_b * 400;
+#if MAX17260_RSENSE_MOHM == 0
+        *max_ma = max_uv;
+        *min_ma = min_uv;
+#else
+        *max_ma = max_uv * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
+        *min_ma = min_uv * 1000 / (int32_t)MAX17260_RSENSE_MOHM;
+#endif
     }
     return res;
 }
@@ -846,8 +894,6 @@ max17260_result_t max17260_read_maxmin_temp(max17260_dev_t *dev,
 {
     max17260_result_t res;
     uint16_t val;
-    int8_t max_raw;
-    int8_t min_raw;
 
     if ((dev == NULL) || (max_x10 == NULL) || (min_x10 == NULL))
     {
@@ -858,12 +904,13 @@ max17260_result_t max17260_read_maxmin_temp(max17260_dev_t *dev,
     res = max17260_read_hw(dev, MAX17260_REG_MAXMINTEMP, &val);
     if (res == MAX17260_OK)
     {
+        uint8_t max_b;
+        uint8_t min_b;
+
         /* 8 位补码字段，1℃/LSB */
-        max_raw = (int8_t)((val & MAX17260_MAXMINTEMP_MAX_MASK) >>
-                           MAX17260_MAXMINTEMP_MAX_SHIFT);
-        min_raw = (int8_t)(val & MAX17260_MAXMINTEMP_MIN_MASK);
-        *max_x10 = (int16_t)((int16_t)max_raw * 10);
-        *min_x10 = (int16_t)((int16_t)min_raw * 10);
+        max17260_unpack_minmax8(val, &min_b, &max_b);
+        *max_x10 = (int16_t)((int16_t)(int8_t)max_b * 10);
+        *min_x10 = (int16_t)((int16_t)(int8_t)min_b * 10);
     }
     return res;
 }
@@ -1044,66 +1091,6 @@ max17260_result_t max17260_get_ichg_term(max17260_dev_t *dev, uint16_t *ma)
     return res;
 }
 
-max17260_result_t max17260_get_modelcfg(max17260_dev_t *dev, uint16_t *val)
-{
-    if ((dev == NULL) || (val == NULL))
-    {
-        return MAX17260_ERR_PARAM;
-    }
-    MAX17260_CHK_DEV(dev);
-    return max17260_read_hw(dev, MAX17260_REG_MODELCFG, val);
-}
-
-max17260_result_t max17260_set_modelcfg(max17260_dev_t *dev, uint16_t val)
-{
-    if (dev == NULL)
-    {
-        return MAX17260_ERR_PARAM;
-    }
-    MAX17260_CHK_DEV(dev);
-    return max17260_write_hw(dev, MAX17260_REG_MODELCFG, val);
-}
-
-max17260_result_t max17260_get_config(max17260_dev_t *dev, uint16_t *val)
-{
-    if ((dev == NULL) || (val == NULL))
-    {
-        return MAX17260_ERR_PARAM;
-    }
-    MAX17260_CHK_DEV(dev);
-    return max17260_read_hw(dev, MAX17260_REG_CONFIG, val);
-}
-
-max17260_result_t max17260_set_config(max17260_dev_t *dev, uint16_t val)
-{
-    if (dev == NULL)
-    {
-        return MAX17260_ERR_PARAM;
-    }
-    MAX17260_CHK_DEV(dev);
-    return max17260_write_hw(dev, MAX17260_REG_CONFIG, val);
-}
-
-max17260_result_t max17260_get_config2(max17260_dev_t *dev, uint16_t *val)
-{
-    if ((dev == NULL) || (val == NULL))
-    {
-        return MAX17260_ERR_PARAM;
-    }
-    MAX17260_CHK_DEV(dev);
-    return max17260_read_hw(dev, MAX17260_REG_CONFIG2, val);
-}
-
-max17260_result_t max17260_set_config2(max17260_dev_t *dev, uint16_t val)
-{
-    if (dev == NULL)
-    {
-        return MAX17260_ERR_PARAM;
-    }
-    MAX17260_CHK_DEV(dev);
-    return max17260_write_hw(dev, MAX17260_REG_CONFIG2, val);
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
  * API —— 5. Alert 阈值与状态服务
  * ════════════════════════════════════════════════════════════════════════ */
@@ -1114,7 +1101,6 @@ max17260_result_t max17260_set_voltage_alerts(max17260_dev_t *dev,
 {
     uint16_t code_min;
     uint16_t code_max;
-    uint16_t val;
 
     if (dev == NULL)
     {
@@ -1131,8 +1117,9 @@ max17260_result_t max17260_set_voltage_alerts(max17260_dev_t *dev,
                    max17260_clamp_u16(min_mv, 0u, 5100u), 20u);
     code_max = (uint16_t)max17260_round_div_u32(
                    max17260_clamp_u16(max_mv, 0u, 5100u), 20u);
-    val = (uint16_t)((code_max << MAX17260_VALRTTH_MAX_SHIFT) | code_min);
-    return max17260_write_hw(dev, MAX17260_REG_VALRTTH, val);
+    return max17260_write_hw(dev, MAX17260_REG_VALRTTH,
+                             max17260_pack_minmax8((uint8_t)code_min,
+                                                   (uint8_t)code_max));
 }
 
 max17260_result_t max17260_get_voltage_alerts(max17260_dev_t *dev,
@@ -1151,9 +1138,12 @@ max17260_result_t max17260_get_voltage_alerts(max17260_dev_t *dev,
     res = max17260_read_hw(dev, MAX17260_REG_VALRTTH, &val);
     if (res == MAX17260_OK)
     {
-        *max_mv = (uint16_t)(((val & MAX17260_VALRTTH_MAX_MASK) >>
-                              MAX17260_VALRTTH_MAX_SHIFT) * 20u);
-        *min_mv = (uint16_t)((val & MAX17260_VALRTTH_MIN_MASK) * 20u);
+        uint8_t max_b;
+        uint8_t min_b;
+
+        max17260_unpack_minmax8(val, &min_b, &max_b);
+        *max_mv = (uint16_t)((uint16_t)max_b * 20u);
+        *min_mv = (uint16_t)((uint16_t)min_b * 20u);
     }
     return res;
 }
@@ -1163,7 +1153,6 @@ max17260_result_t max17260_set_temp_alerts(max17260_dev_t *dev,
 {
     int16_t min_c;
     int16_t max_c;
-    uint16_t val;
 
     if (dev == NULL)
     {
@@ -1178,13 +1167,25 @@ max17260_result_t max17260_set_temp_alerts(max17260_dev_t *dev,
     /* 0.1℃ → 1℃ 档（4 舍 5 入） */
     min_c = (int16_t)max17260_round_div_i32((int32_t)min_x10, 10);
     max_c = (int16_t)max17260_round_div_i32((int32_t)max_x10, 10);
-    if (min_c < -128) min_c = -128;
-    if (min_c > 127) min_c = 127;
-    if (max_c < -128) max_c = -128;
-    if (max_c > 127) max_c = 127;
-    val = (uint16_t)(((uint16_t)(uint8_t)max_c << MAX17260_TALRTTH_MAX_SHIFT) |
-                     (uint16_t)(uint8_t)min_c);
-    return max17260_write_hw(dev, MAX17260_REG_TALRTTH, val);
+    if (min_c < -128)
+    {
+        min_c = -128;
+    }
+    if (min_c > 127)
+    {
+        min_c = 127;
+    }
+    if (max_c < -128)
+    {
+        max_c = -128;
+    }
+    if (max_c > 127)
+    {
+        max_c = 127;
+    }
+    return max17260_write_hw(dev, MAX17260_REG_TALRTTH,
+                             max17260_pack_minmax8((uint8_t)min_c,
+                                                   (uint8_t)max_c));
 }
 
 max17260_result_t max17260_get_temp_alerts(max17260_dev_t *dev,
@@ -1193,8 +1194,6 @@ max17260_result_t max17260_get_temp_alerts(max17260_dev_t *dev,
 {
     max17260_result_t res;
     uint16_t val;
-    int8_t min_c;
-    int8_t max_c;
 
     if ((dev == NULL) || (min_x10 == NULL) || (max_x10 == NULL))
     {
@@ -1205,11 +1204,12 @@ max17260_result_t max17260_get_temp_alerts(max17260_dev_t *dev,
     res = max17260_read_hw(dev, MAX17260_REG_TALRTTH, &val);
     if (res == MAX17260_OK)
     {
-        max_c = (int8_t)((val & MAX17260_TALRTTH_MAX_MASK) >>
-                         MAX17260_TALRTTH_MAX_SHIFT);
-        min_c = (int8_t)(val & MAX17260_TALRTTH_MIN_MASK);
-        *max_x10 = (int16_t)((int16_t)max_c * 10);
-        *min_x10 = (int16_t)((int16_t)min_c * 10);
+        uint8_t max_b;
+        uint8_t min_b;
+
+        max17260_unpack_minmax8(val, &min_b, &max_b);
+        *max_x10 = (int16_t)((int16_t)(int8_t)max_b * 10);
+        *min_x10 = (int16_t)((int16_t)(int8_t)min_b * 10);
     }
     return res;
 }
@@ -1217,8 +1217,6 @@ max17260_result_t max17260_get_temp_alerts(max17260_dev_t *dev,
 max17260_result_t max17260_set_soc_alerts(max17260_dev_t *dev,
                                           uint8_t min_pct, uint8_t max_pct)
 {
-    uint16_t val;
-
     if (dev == NULL)
     {
         return MAX17260_ERR_PARAM;
@@ -1229,9 +1227,8 @@ max17260_result_t max17260_set_soc_alerts(max17260_dev_t *dev,
     {
         return MAX17260_ERR_PARAM;
     }
-    val = (uint16_t)(((uint16_t)max_pct << MAX17260_SALRTTH_MAX_SHIFT) |
-                     (uint16_t)min_pct);
-    return max17260_write_hw(dev, MAX17260_REG_SALRTTH, val);
+    return max17260_write_hw(dev, MAX17260_REG_SALRTTH,
+                             max17260_pack_minmax8(min_pct, max_pct));
 }
 
 max17260_result_t max17260_get_soc_alerts(max17260_dev_t *dev,
@@ -1250,9 +1247,7 @@ max17260_result_t max17260_get_soc_alerts(max17260_dev_t *dev,
     res = max17260_read_hw(dev, MAX17260_REG_SALRTTH, &val);
     if (res == MAX17260_OK)
     {
-        *max_pct = (uint8_t)((val & MAX17260_SALRTTH_MAX_MASK) >>
-                              MAX17260_SALRTTH_MAX_SHIFT);
-        *min_pct = (uint8_t)(val & MAX17260_SALRTTH_MIN_MASK);
+        max17260_unpack_minmax8(val, min_pct, max_pct);
     }
     return res;
 }
@@ -1260,8 +1255,8 @@ max17260_result_t max17260_get_soc_alerts(max17260_dev_t *dev,
 max17260_result_t max17260_set_current_alerts(max17260_dev_t *dev,
                                               int32_t min_ma, int32_t max_ma)
 {
-    int8_t imax;
-    int8_t imin;
+    uint8_t imax;
+    uint8_t imin;
 
     if (dev == NULL)
     {
@@ -1273,18 +1268,11 @@ max17260_result_t max17260_set_current_alerts(max17260_dev_t *dev,
     {
         return MAX17260_ERR_PARAM;
     }
-    {
-        int16_t imax_raw = max17260_current_to_raw(max_ma);
-        int16_t imin_raw = max17260_current_to_raw(min_ma);
-        imax = (int8_t)(imax_raw >> 4);   /* 0.4mV/RSENSE/LSB，1.5625µV/LSB × 256 ≈ 0.4mV */
-        imin = (int8_t)(imin_raw >> 4);
-    }
-    {
-        uint16_t val = (uint16_t)(((uint16_t)(uint8_t)imax <<
-                                   MAX17260_IALRTTH_MAX_SHIFT) |
-                                  (uint16_t)(uint8_t)imin);
-        return max17260_write_hw(dev, MAX17260_REG_IALRTTH, val);
-    }
+    /* 0.4mV/RSENSE/LSB：1.5625µV/LSB × 256 ≈ 0.4mV，右移 4 位即 ×256/4096 */
+    imax = (uint8_t)(int8_t)(max17260_current_to_raw(max_ma) >> 4);
+    imin = (uint8_t)(int8_t)(max17260_current_to_raw(min_ma) >> 4);
+    return max17260_write_hw(dev, MAX17260_REG_IALRTTH,
+                             max17260_pack_minmax8(imin, imax));
 }
 
 max17260_result_t max17260_get_current_alerts(max17260_dev_t *dev,
@@ -1293,12 +1281,6 @@ max17260_result_t max17260_get_current_alerts(max17260_dev_t *dev,
 {
     max17260_result_t res;
     uint16_t val;
-    int8_t imax;
-    int8_t imin;
-    int16_t imax_raw;
-    int16_t imin_raw;
-    int32_t out_max;
-    int32_t out_min;
 
     if ((dev == NULL) || (min_ma == NULL) || (max_ma == NULL))
     {
@@ -1309,15 +1291,14 @@ max17260_result_t max17260_get_current_alerts(max17260_dev_t *dev,
     res = max17260_read_hw(dev, MAX17260_REG_IALRTTH, &val);
     if (res == MAX17260_OK)
     {
-        imax = (int8_t)((val & MAX17260_IALRTTH_MAX_MASK) >>
-                        MAX17260_IALRTTH_MAX_SHIFT);
-        imin = (int8_t)(val & MAX17260_IALRTTH_MIN_MASK);
-        imax_raw = (int16_t)((int16_t)imax << 4);
-        imin_raw = (int16_t)((int16_t)imin << 4);
-        (void)max17260_current_from_raw(imax_raw, &out_max);
-        (void)max17260_current_from_raw(imin_raw, &out_min);
-        *max_ma = out_max;
-        *min_ma = out_min;
+        uint8_t imax_b;
+        uint8_t imin_b;
+
+        max17260_unpack_minmax8(val, &imin_b, &imax_b);
+        (void)max17260_current_from_raw(
+            (int16_t)((int16_t)(int8_t)imax_b << 4), max_ma);
+        (void)max17260_current_from_raw(
+            (int16_t)((int16_t)(int8_t)imin_b << 4), min_ma);
     }
     return res;
 }

@@ -2,12 +2,12 @@
 
 面向 32 位 MCU 的 MAX17260 1 节锂电 ModelGauge m5 EZ 电量计驱动。核心使用纯 C99，不含任何厂商头文件，不分配动态内存，不使用浮点、递归或全局可变状态；CH32 等平台通过 `max17260_io.h` 移植契约接入。
 
-实现依据本目录中的数据手册 `max17260.pdf`：
+实现依据仓库根 `datasheet/MAX17260.pdf` 数据手册：
 
 - 芯片手册：**MAX17260, 19-100249; Rev 2; 7/24**（Analog Devices / Maxim）
 - 封装：14-pin TDFN（3mm × 3mm）或 9-pin WLP（1.5mm × 1.5mm）
 - 关键料号：MAX17260SEWL+ / SETD+（I2C 地址 0x36）、MAX17260BEWL+（I2C 地址 0x0D）
-- 驱动版本：1.0.0
+- 驱动版本：2.0.0
 
 > ModelGauge m5 EZ 算法对绝大多数锂离子电池无需电池表征；ModelID=0 适用大部分钴酸锂，ModelID=2 适用 NCR/NCA，ModelID=6 适用 LiFePO4（手册 Table 4）。对 ModelID=2/6 等特殊电池建议向 ADI 申请定制模型以获得最佳精度。
 
@@ -23,7 +23,7 @@
 |  配置       max17260_conf.h          |  可多实例
 |  寄存器定义 max17260_regs.h          |
 +--------------------------------------+
-           |  4~6 个 io 函数（max17260_io.h）
+           |  3 必选 + 2 可选 io 函数（max17260_io.h）
 +--------------------------------------+
 |  移植层（你实现）                     |  CH32 / STM32 / ESP32 /
 |                                      |  RTOS / Linux / 模拟 I2C
@@ -34,7 +34,7 @@
 
 ## 2. 移植三步走
 
-1. 复制 `port/max17260_io_template.c` 到工程（可改名），用平台 I2C API 填空 4 个函数。
+1. 复制 `port/max17260_io_template.c` 到工程（可改名），用平台 I2C API 填空 3 个函数。
 2. 按需调整 `max17260_conf.h`（变体、RSENSE 毫欧值、功能开关），或用编译器 `-D` 覆盖。
 3. 调用 `max17260_init()`，随后 `max17260_configure_model()` 写入 DesignCap / VEmpty / IChgTerm 三件套——之后核心文件零改动。
 
@@ -107,16 +107,13 @@ void app_alert_task(void)
 | 函数 | 单位/换算 | 说明 |
 | --- | --- | --- |
 | `max17260_read_vcell(dev, mv)` | mV = raw × 78.125µV / 1000 | 满量程 0~5119.92mV |
-| `max17260_read_vcell_raw` | raw | |
 | `max17260_read_soc(dev, percent)` | % = raw/256，四舍五入 | POR 后 351ms 内无效 |
 | `max17260_read_soc_precise(dev, x100)` | 0.01% | 原始分辨率 1/256% |
-| `max17260_read_soc_raw` | raw | |
 | `max17260_read_temp(dev, temp_x10)` | 0.1℃ = raw × 10 / 256 | 内部或 NTC 由 Config.TSEL 决定 |
 | `max17260_read_temp_raw` | raw（补码） | |
 | `max17260_read_current(dev, ma)` | mA = raw × 1.5625µV / RSENSE | 充正放负 |
 | `max17260_read_current_raw` | raw（补码） | |
 | `max17260_read_repcap(dev, mah)` | mAh = raw × 5.0µVh / RSENSE | 剩余容量 |
-| `max17260_read_repcap_raw` | raw | |
 | `max17260_read_fullcaprep(dev, mah)` | mAh | 满充容量 |
 | `max17260_read_tte(dev, s)` | s = raw × 5.625 | 仅当 Current<0 有效 |
 | `max17260_read_ttf(dev, s)` | s = raw × 5.625 | 仅当 Current>0 有效 |
@@ -146,9 +143,20 @@ void app_alert_task(void)
 | `max17260_get_design_cap` | 读 DesignCap |
 | `max17260_get_vempty(dev, ve_mv, vr_mv)` | 读 VEmpty（VE 10mV 档 / VR 40mV 档） |
 | `max17260_get_ichg_term` | 读 IChgTerm |
-| `max17260_get/set_modelcfg(dev, val)` | 读 / 写 ModelCfg 原始值（ModelID / R100 / VChg / CSEL / Refresh） |
-| `max17260_get/set_config(dev, val)` | 读 / 写 Config 原始值（TSEL / SS/TS/VS/IS / Aen 等） |
-| `max17260_get/set_config2(dev, val)` | 读 / 写 Config2 原始值（AtRateEn / DPEn / dSOCen / TAlrtEn 等） |
+
+整字配置寄存器（ModelCfg / Config / Config2）不再提供薄封装，直接用寄存器级
+`max17260_read_reg / write_reg / update_bits` 配合 `max17260_regs.h` 中的位掩码：
+
+```c
+/* 例：切到外部 NTC（TSEL=1 + ETHRM=1） */
+max17260_update_bits(&g_gauge, MAX17260_REG_CONFIG,
+                     MAX17260_CONFIG_TSEL | MAX17260_CONFIG_ETHRM,
+                     MAX17260_CONFIG_TSEL | MAX17260_CONFIG_ETHRM);
+
+/* 例：进入关断 */
+max17260_update_bits(&g_gauge, MAX17260_REG_CONFIG,
+                     MAX17260_CONFIG_SHDN, MAX17260_CONFIG_SHDN);
+```
 
 ### 4.5 告警（ALRT 引脚，开漏低有效）
 
@@ -242,7 +250,7 @@ I2C：7 位地址 **0x36**（SEWL+ / SETD+）或 **0x0D**（BEWL+），最高 40
 | `max17260.h` | 公共类型、结果码与全部 API 声明 |
 | `max17260.c` | 驱动核心（协议/换算/序列，零平台代码） |
 | `max17260_conf.h` | 配置宏（变体、RSENSE、功能裁剪、线程安全），全部可 `-D` 覆盖 |
-| `max17260_regs.h` | 寄存器地址、位定义、POR 值与换算常量 |
-| `max17260_io.h` | 移植契约（4 必选 + 2 可选函数） |
+| `max17260_regs.h` | 寄存器地址、位定义与字段掩码（POR 值见地址行尾注释） |
+| `max17260_io.h` | 移植契约（3 必选 + 2 可选函数） |
 | `port/max17260_io_template.c` | 移植模板（填空注释 + STM32 HAL/ESP-IDF/裸机示例） |
-| `max17260.pdf` | 数据手册副本（Rev 2） |
+| `datasheet/MAX17260.pdf` | 数据手册副本（Rev 2，位于仓库根 `datasheet/`） |

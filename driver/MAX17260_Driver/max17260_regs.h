@@ -9,8 +9,8 @@
  * @note    容量与电流的 LSB 单位为 µVh / µV（与 RSENSE 相关），实际
  *          mAh / mA 需用 max17260_conf.h 中 MAX17260_RSENSE_MOHM 换算。
  * @author  Maiooo
- * @version 1.0.0
- * @date    2026-09-02
+ * @version 2.0.0
+ * @date    2026-09-06
  */
 
 #ifndef MAX17260_REGS_H
@@ -28,21 +28,12 @@ extern "C" {
 #define MAX17260_I2C_ADDR_ALT       0x0D    /**< 7 位从机地址（MAX17260BEWL+ 系列） */
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 换算常量（手册 Table 2 Standard Resolutions）
- * ════════════════════════════════════════════════════════════════════════ */
+ * 换算常量（手册 Table 2 Standard Resolutions，仅保留驱动实际使用的；
+ * 其余换算系数以带注释的定点表达式写在 max17260.c 对应函数内）
+ * ══════════════════════════════════════════════════════════════════════════ */
 
-#define MAX17260_VCELL_LSB_UV       78125       /**< VCell 分辨率 78.125µV/LSB */
-#define MAX17260_TEMP_LSB_C_X256    1           /**< Temp 分辨率 1/256 ℃/LSB */
-#define MAX17260_SOC_LSB_DIV        256         /**< RepSOC 分辨率 1/256 %/LSB */
-#define MAX17260_CURRENT_LSB_UV     15625       /**< Current 分辨率 1.5625µV/RSENSE/LSB ×10 */
-#define MAX17260_CAPACITY_LSB_UVH   50000       /**< RepCap 分辨率 5.0µVh/RSENSE/LSB ×10 */
-#define MAX17260_TIME_LSB_S_X10     5625        /**< TTE/TTF 分辨率 5.625s/LSB ×10 */
 #define MAX17260_VEMPTY_LSB_MV      10          /**< VEmpty.VE 分辨率 10mV/LSB */
 #define MAX17260_VRECOV_LSB_MV      40          /**< VEmpty.VR 分辨率 40mV/LSB */
-#define MAX17260_ALRT_LSB_MV        20          /**< VAlrtTh 分辨率 20mV/LSB */
-#define MAX17260_TALRT_LSB_C        1           /**< TAlrtTh 分辨率 1℃/LSB */
-#define MAX17260_SALRT_LSB_PCT      1           /**< SAlrtTh 分辨率 1%/LSB */
-#define MAX17260_IALRT_LSB_UV       400         /**< IAlrtTh 分辨率 0.4mV/RSENSE/LSB ×1000 */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * 寄存器地址（手册 Table 17 Memory Map）
@@ -102,24 +93,7 @@ extern "C" {
 
 #define MAX17260_SN_WORDS          8       /**< 序列号字数（0xD4~0xDF，跳过 0xD6/0xD7/0xD8/0xDB） */
 
-/* ══════════════════════════════════════════════════════════════════════════
- * 复位（POR）默认值
- * ════════════════════════════════════════════════════════════════════════ */
-
-#define MAX17260_STATUS_REG_POR     0x8082u
-#define MAX17260_VALRTTH_POR        0xFF00u
-#define MAX17260_TALRTTH_POR        0x7F80u
-#define MAX17260_SALRTTH_POR        0xFF00u
-#define MAX17260_DESIGNCAP_POR      0x0BB8u
-#define MAX17260_CONFIG_POR         0x2210u
-#define MAX17260_ICHGTERM_POR       0x0640u
-#define MAX17260_VEMPTY_POR         0xA561u
-#define MAX17260_MAXMINVOLT_POR     0x00FFu
-#define MAX17260_MAXMINCURR_POR     0x807Fu
-#define MAX17260_MAXMINTEMP_POR     0x807Fu
-#define MAX17260_IALRTTH_POR        0x7F80u
-#define MAX17260_CONFIG2_POR        0x3658u
-#define MAX17260_MODELCFG_POR       0x0000u
+/* 各寄存器 POR 默认值见上方 Memory Map 行尾注释；MaxMin* 复位值见文末字段节。 */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Status 寄存器位（手册 Table 7）
@@ -211,49 +185,15 @@ extern "C" {
 
 /* ══════════════════════════════════════════════════════════════════════════
  * MaxMin* / AlrtTh 寄存器字段
- * ════════════════════════════════════════════════════════════════════════ */
+ * 七个寄存器（MaxMinVolt / MaxMinCurr / MaxMinTemp / VAlrtTh / TAlrtTh /
+ * SAlrtTh / IAlrtTh）布局一致：高 8 位 Max，低 8 位 Min；分辨率见各自
+ * API 注释。编码统一由 max17260.c 的 pack/unpack_minmax8() 完成。
+ * ══════════════════════════════════════════════════════════════════════════ */
 
-/** MaxMinVolt：高 8 位 MaxVCELL，低 8 位 MinVCELL，20mV/LSB */
-#define MAX17260_MAXMINVOLT_MAX_SHIFT  8
-#define MAX17260_MAXMINVOLT_MAX_MASK   (0xFFu << MAX17260_MAXMINVOLT_MAX_SHIFT)
-#define MAX17260_MAXMINVOLT_MIN_MASK   (0xFFu << 0)
-
-/** MaxMinCurr：高 8 位 MaxCurrent，低 8 位 MinCurrent，0.4mV/RSENSE/LSB */
-#define MAX17260_MAXMINCURR_MAX_SHIFT  8
-#define MAX17260_MAXMINCURR_MAX_MASK   (0xFFu << MAX17260_MAXMINCURR_MAX_SHIFT)
-#define MAX17260_MAXMINCURR_MIN_MASK   (0xFFu << 0)
-
-/** MaxMinTemp：高 8 位 MaxTemperature，低 8 位 MinTemperature，1℃/LSB（补码） */
-#define MAX17260_MAXMINTEMP_MAX_SHIFT  8
-#define MAX17260_MAXMINTEMP_MAX_MASK   (0xFFu << MAX17260_MAXMINTEMP_MAX_SHIFT)
-#define MAX17260_MAXMINTEMP_MIN_MASK   (0xFFu << 0)
-
-/** VAlrtTh：高 8 位 VMAX，低 8 位 VMIN，20mV/LSB */
-#define MAX17260_VALRTTH_MAX_SHIFT 8
-#define MAX17260_VALRTTH_MAX_MASK  (0xFFu << MAX17260_VALRTTH_MAX_SHIFT)
-#define MAX17260_VALRTTH_MIN_MASK  (0xFFu << 0)
-
-/** TAlrtTh：高 8 位 TMAX，低 8 位 TMIN，1℃/LSB（补码） */
-#define MAX17260_TALRTTH_MAX_SHIFT 8
-#define MAX17260_TALRTTH_MAX_MASK  (0xFFu << MAX17260_TALRTTH_MAX_SHIFT)
-#define MAX17260_TALRTTH_MIN_MASK  (0xFFu << 0)
-
-/** SAlrtTh：高 8 位 SMAX，低 8 位 SMIN，1%/LSB */
-#define MAX17260_SALRTTH_MAX_SHIFT 8
-#define MAX17260_SALRTTH_MAX_MASK  (0xFFu << MAX17260_SALRTTH_MAX_SHIFT)
-#define MAX17260_SALRTTH_MIN_MASK  (0xFFu << 0)
-
-/** IAlrtTh：高 8 位 IMAX，低 8 位 IMIN，0.4mV/RSENSE/LSB（补码） */
-#define MAX17260_IALRTTH_MAX_SHIFT 8
-#define MAX17260_IALRTTH_MAX_MASK  (0xFFu << MAX17260_IALRTTH_MAX_SHIFT)
-#define MAX17260_IALRTTH_MIN_MASK  (0xFFu << 0)
-
-/* ══════════════════════════════════════════════════════════════════════════
- * 命令常量
- * ════════════════════════════════════════════════════════════════════════ */
-
-/** POR 后稳定时间（手册：算法输出约 351ms 后有效） */
-#define MAX17260_POR_STABILIZE_MS  351
+/** MaxMin* 复位值（max17260_reset_maxmin() 写入） */
+#define MAX17260_MAXMINVOLT_POR     0x00FFu  /**< 20mV/LSB：Max=0xFF，Min=0 */
+#define MAX17260_MAXMINCURR_POR     0x807Fu  /**< 0.4mV/RSENSE/LSB（补码） */
+#define MAX17260_MAXMINTEMP_POR     0x807Fu  /**< 1℃/LSB（补码） */
 
 #ifdef __cplusplus
 }
