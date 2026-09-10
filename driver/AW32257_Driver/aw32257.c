@@ -1,6 +1,13 @@
 /**
  * @file    aw32257.c
  * @brief   AW32257 可移植 C99 驱动实现
+ * @details 实现 POR 安全初始化（REG06 首笔写入与回读校验）、类型化
+ *          寄存器配置（读-改-写）、状态/配置快照与软件复位时序。
+ *          所有总线访问经 aw32257_io.h 契约函数完成，核心不含任何
+ *          平台代码；契约函数的返回值原样保存到实例的
+ *          last_port_error，供 aw32257_get_last_port_error() 诊断。
+ * @note    仅依赖自身头文件与 C99 标准类型头（stddef.h）；核心不可
+ *          重入，禁止在中断服务程序(ISR)中调用。
  * @author  Maiooo
  * @version 1.0.0
  * @date    2026-08-13
@@ -9,9 +16,12 @@
  */
 
 #include "aw32257.h"
+#include "aw32257_conf.h"
 #include "aw32257_io.h"
 
 #include <stddef.h>
+
+/* ══════════════════════════ 常量与查找表 ══════════════════════════ */
 
 /* 数值取自 AW32257 V1.5 手册寄存器表，对应 RSNS = 33 mOhm。 */
 static const uint16_t aw32257_current_ma_33mohm[16] =
@@ -25,19 +35,47 @@ static const uint16_t aw32257_term_current_ma_33mohm[8] =
     62, 124, 186, 248, 310, 372, 434, 496
 };
 
-static bool aw32257_current_code_is_valid(aw32257_current_code_t current_code)
+/* ══════════════════════════ 私有辅助函数 ══════════════════════════ */
+
+/**
+ * @brief   判断快充电流码点是否在手册 16 档范围内。
+ * @param   current_code 待校验的快充电流码点。
+ * @retval  true  码点合法。
+ * @retval  false 码点超出 AW32257_CURRENT_CODE_0F。
+ */
+static bool
+aw32257_current_code_is_valid(aw32257_current_code_t current_code)
 {
     return (uint32_t)current_code <= (uint32_t)AW32257_CURRENT_CODE_0F;
 }
 
-static bool aw32257_term_current_code_is_valid(
+/**
+ * @brief   判断充电终止电流码点是否在手册 8 档范围内。
+ * @param   current_code 待校验的终止电流码点。
+ * @retval  true  码点合法。
+ * @retval  false 码点超出 AW32257_TERM_CURRENT_CODE_7。
+ */
+static bool
+aw32257_term_current_code_is_valid(
     aw32257_term_current_code_t current_code)
 {
     return (uint32_t)current_code <=
            (uint32_t)AW32257_TERM_CURRENT_CODE_7;
 }
 
-static aw32257_status_t aw32257_require_ready(const aw32257_t * device)
+/**
+ * @brief   校验实例处于可访问寄存器的 READY 状态。
+ * @details 按错误优先级依次检查：空指针、未绑定、POR_REQUIRED、
+ *          其余非 READY 状态。
+ * @param   device 驱动实例，允许为 NULL。
+ * @retval  AW32257_OK 实例处于 READY 状态。
+ * @retval  AW32257_ERR_NULL_POINTER @p device 为 NULL。
+ * @retval  AW32257_ERR_NOT_BOUND 实例未绑定上下文。
+ * @retval  AW32257_ERR_POR_REQUIRED 实例锁存为必须真实硬件 POR。
+ * @retval  AW32257_ERR_NOT_INITIALIZED 实例未完成上电初始化。
+ */
+static aw32257_status_t
+aw32257_require_ready(const aw32257_t * device)
 {
     if (device == NULL)
     {
@@ -62,9 +100,20 @@ static aw32257_status_t aw32257_require_ready(const aw32257_t * device)
     return AW32257_OK;
 }
 
-static aw32257_status_t aw32257_port_read(aw32257_t * device,
-                                           uint8_t register_address,
-                                           uint8_t * value)
+/**
+ * @brief   经 io 读契约函数读取一个寄存器并记录原始返回值。
+ * @details 无条件把契约函数的返回值保存到 device->last_port_error；
+ *          非零一律映射为 AW32257_ERR_IO，原始码不丢失。
+ * @param[in,out] device 驱动实例。
+ * @param   register_address 寄存器地址。
+ * @param   value            输出：读到的字节。
+ * @retval  AW32257_OK 读取成功。
+ * @retval  AW32257_ERR_IO 契约函数返回非零。
+ */
+static aw32257_status_t
+aw32257_port_read(aw32257_t * device,
+                  uint8_t register_address,
+                  uint8_t * value)
 {
     int32_t port_status;
 
@@ -83,9 +132,20 @@ static aw32257_status_t aw32257_port_read(aw32257_t * device,
     return AW32257_OK;
 }
 
-static aw32257_status_t aw32257_port_write(aw32257_t * device,
-                                            uint8_t register_address,
-                                            uint8_t value)
+/**
+ * @brief   经 io 写契约函数写入一个寄存器并记录原始返回值。
+ * @details 无条件把契约函数的返回值保存到 device->last_port_error；
+ *          非零一律映射为 AW32257_ERR_IO，原始码不丢失。
+ * @param[in,out] device 驱动实例。
+ * @param   register_address 寄存器地址。
+ * @param   value            待写入的字节。
+ * @retval  AW32257_OK 写入成功。
+ * @retval  AW32257_ERR_IO 契约函数返回非零。
+ */
+static aw32257_status_t
+aw32257_port_write(aw32257_t * device,
+                   uint8_t register_address,
+                   uint8_t value)
 {
     int32_t port_status;
 
@@ -104,10 +164,22 @@ static aw32257_status_t aw32257_port_write(aw32257_t * device,
     return AW32257_OK;
 }
 
-static aw32257_status_t aw32257_update_bits(aw32257_t * device,
-                                             uint8_t register_address,
-                                             uint8_t mask,
-                                             uint8_t field_value)
+/**
+ * @brief   对一个寄存器做读-改-写，只改 @p mask 覆盖的位。
+ * @details 要求实例处于 READY 状态；非目标位保持原值；新值与旧值
+ *          相同时跳过写事务；读失败时不写，写失败不重试。
+ * @param[in,out] device 驱动实例。
+ * @param   register_address 目标寄存器地址。
+ * @param   mask             受影响位的掩码。
+ * @param   field_value      目标位的新值（掩码外的位被忽略）。
+ * @retval  AW32257_OK 写入成功或值未变化。
+ * @retval  AW32257_ERR_* 生命周期校验失败或 I/O 失败时原样上抛。
+ */
+static aw32257_status_t
+aw32257_update_bits(aw32257_t * device,
+                    uint8_t register_address,
+                    uint8_t mask,
+                    uint8_t field_value)
 {
     aw32257_status_t status;
     uint8_t old_value;
@@ -135,8 +207,14 @@ static aw32257_status_t aw32257_update_bits(aw32257_t * device,
     return aw32257_port_write(device, register_address, new_value);
 }
 
-static void aw32257_decode_device_info(uint8_t raw_reg03,
-                                        aw32257_device_info_t * device_info)
+/**
+ * @brief   把 REG03 原始值解码为厂商/型号/修订码。
+ * @param   raw_reg03   REG03 原始值。
+ * @param   device_info 输出：解码结果。
+ */
+static void
+aw32257_decode_device_info(uint8_t raw_reg03,
+                           aw32257_device_info_t * device_info)
 {
     device_info->raw_reg03 = raw_reg03;
     device_info->vendor_code = (uint8_t)((raw_reg03 & AW32257_REG03_VENDOR_MASK) >>
@@ -147,14 +225,33 @@ static void aw32257_decode_device_info(uint8_t raw_reg03,
                                            AW32257_REG03_REVISION_MASK);
 }
 
-static bool aw32257_device_id_is_valid(uint8_t raw_reg03)
+/**
+ * @brief   校验 REG03 的厂商+型号掩码是否与手册一致。
+ * @details 修订码不参与比较，因此芯片未来修订不会误报。
+ * @param   raw_reg03 REG03 原始值。
+ * @retval  true  身份匹配。
+ * @retval  false 身份不匹配。
+ */
+static bool
+aw32257_device_id_is_valid(uint8_t raw_reg03)
 {
     return (raw_reg03 & AW32257_REG03_ID_MASK) ==
            AW32257_REG03_ID_EXPECTED;
 }
 
-static aw32257_status_t aw32257_encode_charge_voltage(uint16_t voltage_mv,
-                                                       uint8_t * encoded)
+/**
+ * @brief   把充电电压编码为 REG02 VOREG 档位。
+ * @details 只接受能被 20 mV 档位精确表示的 3500..4500 mV 值，不取整、
+ *          不钳位；非法值由调用者在访问总线前拒绝。
+ * @param   voltage_mv 期望电压，单位 mV。
+ * @param   encoded    输出：VOREG 编码值。
+ * @retval  AW32257_OK 编码成功。
+ * @retval  AW32257_ERR_NULL_POINTER @p encoded 为 NULL。
+ * @retval  AW32257_ERR_RANGE 电压超界或不是 20 mV 的整数倍。
+ */
+static aw32257_status_t
+aw32257_encode_charge_voltage(uint16_t voltage_mv,
+                              uint8_t * encoded)
 {
     uint16_t delta;
 
@@ -178,7 +275,15 @@ static aw32257_status_t aw32257_encode_charge_voltage(uint16_t voltage_mv,
     return AW32257_OK;
 }
 
-static uint16_t aw32257_decode_charge_voltage(uint8_t raw_reg02)
+/**
+ * @brief   把 REG02 原始值解码为充电电压。
+ * @details 手册允许 VOREG 码点 0x32..0x3F 同样表示 4.50 V，这里把
+ *          该区间统一解码为 4500 mV。
+ * @param   raw_reg02 REG02 原始值。
+ * @retval  uint16_t 充电电压，单位 mV。
+ */
+static uint16_t
+aw32257_decode_charge_voltage(uint8_t raw_reg02)
 {
     uint8_t code;
 
@@ -192,8 +297,19 @@ static uint16_t aw32257_decode_charge_voltage(uint8_t raw_reg02)
     return (uint16_t)(3500U + ((uint16_t)code * 20U));
 }
 
-static aw32257_status_t aw32257_encode_dpm_voltage(uint16_t voltage_mv,
-                                                    uint8_t * encoded)
+/**
+ * @brief   把 DPM 电压编码为 REG05 档位。
+ * @details 只接受能被 75 mV 档位精确表示的 4250..4775 mV 值，
+ *          不取整、不钳位。
+ * @param   voltage_mv 期望电压，单位 mV。
+ * @param   encoded    输出：DPM 电压档位编码值。
+ * @retval  AW32257_OK 编码成功。
+ * @retval  AW32257_ERR_NULL_POINTER @p encoded 为 NULL。
+ * @retval  AW32257_ERR_RANGE 电压超界或不是 75 mV 的整数倍。
+ */
+static aw32257_status_t
+aw32257_encode_dpm_voltage(uint16_t voltage_mv,
+                           uint8_t * encoded)
 {
     uint16_t delta;
 
@@ -217,7 +333,13 @@ static aw32257_status_t aw32257_encode_dpm_voltage(uint16_t voltage_mv,
     return AW32257_OK;
 }
 
-static uint16_t aw32257_decode_dpm_voltage(uint8_t raw_reg05)
+/**
+ * @brief   把 REG05 原始值解码为 DPM 电压。
+ * @param   raw_reg05 REG05 原始值。
+ * @retval  uint16_t DPM 电压，单位 mV。
+ */
+static uint16_t
+aw32257_decode_dpm_voltage(uint8_t raw_reg05)
 {
     uint8_t code;
 
@@ -225,8 +347,20 @@ static uint16_t aw32257_decode_dpm_voltage(uint8_t raw_reg05)
     return (uint16_t)(4250U + ((uint16_t)code * 75U));
 }
 
-static aw32257_status_t aw32257_encode_safety_voltage(uint16_t voltage_mv,
-                                                       uint8_t * encoded)
+/**
+ * @brief   把安全电压编码为 REG06 档位。
+ * @details 只接受能被 20 mV 档位精确表示的 4200..4500 mV 值；
+ *          REG06 仅在硬件 POR 后可写，编码失败意味着本次上电初始化
+ *          中止。
+ * @param   voltage_mv 期望电压，单位 mV。
+ * @param   encoded    输出：REG06 低 4 位的安全电压编码值。
+ * @retval  AW32257_OK 编码成功。
+ * @retval  AW32257_ERR_NULL_POINTER @p encoded 为 NULL。
+ * @retval  AW32257_ERR_RANGE 电压超界或不是 20 mV 的整数倍。
+ */
+static aw32257_status_t
+aw32257_encode_safety_voltage(uint16_t voltage_mv,
+                              uint8_t * encoded)
 {
     uint16_t delta;
 
@@ -250,7 +384,13 @@ static aw32257_status_t aw32257_encode_safety_voltage(uint16_t voltage_mv,
     return AW32257_OK;
 }
 
-static uint16_t aw32257_decode_safety_voltage(uint8_t raw_reg06)
+/**
+ * @brief   把 REG06 原始值解码为安全电压。
+ * @param   raw_reg06 REG06 原始值。
+ * @retval  uint16_t 最大安全电压，单位 mV。
+ */
+static uint16_t
+aw32257_decode_safety_voltage(uint8_t raw_reg06)
 {
     uint8_t code;
 
@@ -258,7 +398,21 @@ static uint16_t aw32257_decode_safety_voltage(uint8_t raw_reg06)
     return (uint16_t)(4200U + ((uint16_t)code * 20U));
 }
 
-static aw32257_status_t aw32257_encode_termination_config(
+/**
+ * @brief   把终止判定配置编码为 REG07 可写字段值。
+ * @details 逐项校验手册档位：窗口 8/16 周期、有效周期数 1/2/4/8、
+ *          单周期去抖 8/16/32/64 ms、再充电阈值 50..200 mV（50 mV
+ *          步进）。另外按手册电气特性拒绝“有效周期数 × 单周期去抖
+ *          大于 256 ms”的组合——寄存器本身允许到 512 ms，但手册给出
+ *          的终止检测上限是 256 ms。
+ * @param   config  终止判定配置。
+ * @param   encoded 输出：REG07 可写字段的编码值。
+ * @retval  AW32257_OK 编码成功。
+ * @retval  AW32257_ERR_NULL_POINTER @p config 或 @p encoded 为 NULL。
+ * @retval  AW32257_ERR_RANGE 某字段超出手册档位或组合超出时序上限。
+ */
+static aw32257_status_t
+aw32257_encode_termination_config(
     const aw32257_termination_config_t * config,
     uint8_t * encoded)
 {
@@ -342,7 +496,13 @@ static aw32257_status_t aw32257_encode_termination_config(
     return AW32257_OK;
 }
 
-static void aw32257_decode_termination_config(
+/**
+ * @brief   把 REG07 原始值解码为终止判定配置。
+ * @param   raw_reg07 REG07 原始值。
+ * @param   config    输出：解码结果。
+ */
+static void
+aw32257_decode_termination_config(
     uint8_t raw_reg07,
     aw32257_termination_config_t * config)
 {
@@ -364,7 +524,19 @@ static void aw32257_decode_termination_config(
                                                ((uint16_t)recharge_code * 50U));
 }
 
-static aw32257_status_t aw32257_encode_boost_config(
+/**
+ * @brief   把升压配置编码为 REG0A 可写字段值。
+ * @details 校验频率档位（1500/1700 kHz）、压摆率码点与输出电压
+ *          5050..5350 mV（100 mV 步进），组合出频率、压摆率、死时间、
+ *          强制 PWM 与输出电压字段。
+ * @param   config  升压配置。
+ * @param   encoded 输出：REG0A 可写字段的编码值。
+ * @retval  AW32257_OK 编码成功。
+ * @retval  AW32257_ERR_NULL_POINTER @p config 或 @p encoded 为 NULL。
+ * @retval  AW32257_ERR_RANGE 某字段超出手册档位。
+ */
+static aw32257_status_t
+aw32257_encode_boost_config(
     const aw32257_boost_config_t * config,
     uint8_t * encoded)
 {
@@ -414,8 +586,14 @@ static aw32257_status_t aw32257_encode_boost_config(
     return AW32257_OK;
 }
 
-static void aw32257_decode_boost_config(uint8_t raw_reg0a,
-                                         aw32257_boost_config_t * config)
+/**
+ * @brief   把 REG0A 原始值解码为升压配置。
+ * @param   raw_reg0a REG0A 原始值。
+ * @param   config    输出：解码结果。
+ */
+static void
+aw32257_decode_boost_config(uint8_t raw_reg0a,
+                            aw32257_boost_config_t * config)
 {
     uint8_t output_code;
 
@@ -432,9 +610,12 @@ static void aw32257_decode_boost_config(uint8_t raw_reg0a,
     config->force_pwm = (raw_reg0a & AW32257_REG0A_FORCE_PWM_MASK) != 0U;
 }
 
-aw32257_status_t aw32257_init(aw32257_t * device,
-                              void * io_ctx,
-                              uint32_t io_timeout_ms)
+/* ══════════════════════════ 生命周期与初始化 ══════════════════════════ */
+
+aw32257_status_t
+aw32257_init(aw32257_t * device,
+             void * io_ctx,
+             uint32_t io_timeout_ms)
 {
     if (device == NULL)
     {
@@ -454,9 +635,10 @@ aw32257_status_t aw32257_init(aw32257_t * device,
     return AW32257_OK;
 }
 
-aw32257_status_t aw32257_power_on_init(aw32257_t * device,
-                                        const aw32257_safety_config_t * safety,
-                                        aw32257_device_info_t * device_info)
+aw32257_status_t
+aw32257_power_on_init(aw32257_t * device,
+                      const aw32257_safety_config_t * safety,
+                      aw32257_device_info_t * device_info)
 {
     aw32257_status_t status;
     aw32257_device_info_t local_info;
@@ -558,7 +740,8 @@ aw32257_status_t aw32257_power_on_init(aw32257_t * device,
     return AW32257_OK;
 }
 
-aw32257_status_t aw32257_soft_reset(aw32257_t * device)
+aw32257_status_t
+aw32257_soft_reset(aw32257_t * device)
 {
     aw32257_status_t status;
     uint8_t raw_reg00;
@@ -594,7 +777,8 @@ aw32257_status_t aw32257_soft_reset(aw32257_t * device)
     return status;
 }
 
-aw32257_lifecycle_t aw32257_get_lifecycle(const aw32257_t * device)
+aw32257_lifecycle_t
+aw32257_get_lifecycle(const aw32257_t * device)
 {
     if (device == NULL)
     {
@@ -604,7 +788,8 @@ aw32257_lifecycle_t aw32257_get_lifecycle(const aw32257_t * device)
     return device->lifecycle;
 }
 
-int32_t aw32257_get_last_port_error(const aw32257_t * device)
+int32_t
+aw32257_get_last_port_error(const aw32257_t * device)
 {
     if (device == NULL)
     {
@@ -614,9 +799,12 @@ int32_t aw32257_get_last_port_error(const aw32257_t * device)
     return device->last_port_error;
 }
 
-aw32257_status_t aw32257_read_register(aw32257_t * device,
-                                        uint8_t register_address,
-                                        uint8_t * value)
+/* ══════════════════════════ 状态与配置读取 ══════════════════════════ */
+
+aw32257_status_t
+aw32257_read_register(aw32257_t * device,
+                      uint8_t register_address,
+                      uint8_t * value)
 {
     aw32257_status_t status;
 
@@ -639,8 +827,9 @@ aw32257_status_t aw32257_read_register(aw32257_t * device,
     return aw32257_port_read(device, register_address, value);
 }
 
-aw32257_status_t aw32257_read_device_info(aw32257_t * device,
-                                           aw32257_device_info_t * device_info)
+aw32257_status_t
+aw32257_read_device_info(aw32257_t * device,
+                         aw32257_device_info_t * device_info)
 {
     aw32257_status_t status;
     aw32257_device_info_t local_info;
@@ -673,8 +862,9 @@ aw32257_status_t aw32257_read_device_info(aw32257_t * device,
     return AW32257_OK;
 }
 
-aw32257_status_t aw32257_read_status(aw32257_t * device,
-                                      aw32257_status_snapshot_t * snapshot)
+aw32257_status_t
+aw32257_read_status(aw32257_t * device,
+                    aw32257_status_snapshot_t * snapshot)
 {
     aw32257_status_t status;
     aw32257_status_snapshot_t local_snapshot;
@@ -736,8 +926,9 @@ aw32257_status_t aw32257_read_status(aw32257_t * device,
     return AW32257_OK;
 }
 
-aw32257_status_t aw32257_read_configuration(aw32257_t * device,
-                                             aw32257_config_snapshot_t * snapshot)
+aw32257_status_t
+aw32257_read_configuration(aw32257_t * device,
+                           aw32257_config_snapshot_t * snapshot)
 {
     aw32257_status_t status;
     aw32257_config_snapshot_t local_snapshot;
@@ -839,8 +1030,11 @@ aw32257_status_t aw32257_read_configuration(aw32257_t * device,
     return AW32257_OK;
 }
 
-aw32257_status_t aw32257_set_stat_output_enabled(aw32257_t * device,
-                                                  bool enabled)
+/* ══════════════════════════ 配置写入 ══════════════════════════ */
+
+aw32257_status_t
+aw32257_set_stat_output_enabled(aw32257_t * device,
+                                bool enabled)
 {
     return aw32257_update_bits(device,
                                AW32257_REG_STATUS_CONTROL,
@@ -848,7 +1042,8 @@ aw32257_status_t aw32257_set_stat_output_enabled(aw32257_t * device,
                                enabled ? AW32257_REG00_EN_STAT_MASK : 0U);
 }
 
-aw32257_status_t aw32257_set_charge_enabled(aw32257_t * device, bool enabled)
+aw32257_status_t
+aw32257_set_charge_enabled(aw32257_t * device, bool enabled)
 {
     return aw32257_update_bits(device,
                                AW32257_REG_CONTROL,
@@ -856,8 +1051,9 @@ aw32257_status_t aw32257_set_charge_enabled(aw32257_t * device, bool enabled)
                                enabled ? 0U : AW32257_REG01_CHARGE_DISABLE_MASK);
 }
 
-aw32257_status_t aw32257_set_termination_enabled(aw32257_t * device,
-                                                  bool enabled)
+aw32257_status_t
+aw32257_set_termination_enabled(aw32257_t * device,
+                                bool enabled)
 {
     return aw32257_update_bits(
         device,
@@ -866,7 +1062,8 @@ aw32257_status_t aw32257_set_termination_enabled(aw32257_t * device,
         enabled ? AW32257_REG01_TERMINATION_ENABLE_MASK : 0U);
 }
 
-aw32257_status_t aw32257_set_mode(aw32257_t * device, aw32257_mode_t mode)
+aw32257_status_t
+aw32257_set_mode(aw32257_t * device, aw32257_mode_t mode)
 {
     uint8_t encoded;
 
@@ -891,8 +1088,9 @@ aw32257_status_t aw32257_set_mode(aw32257_t * device, aw32257_mode_t mode)
                                encoded);
 }
 
-aw32257_status_t aw32257_set_charge_voltage_mv(aw32257_t * device,
-                                                uint16_t voltage_mv)
+aw32257_status_t
+aw32257_set_charge_voltage_mv(aw32257_t * device,
+                              uint16_t voltage_mv)
 {
     aw32257_status_t status;
     uint8_t encoded;
@@ -909,7 +1107,8 @@ aw32257_status_t aw32257_set_charge_voltage_mv(aw32257_t * device,
                                encoded);
 }
 
-aw32257_status_t aw32257_set_fast_charge_current(
+aw32257_status_t
+aw32257_set_fast_charge_current(
     aw32257_t * device,
     aw32257_current_code_t current_code)
 {
@@ -929,7 +1128,8 @@ aw32257_status_t aw32257_set_fast_charge_current(
                                encoded);
 }
 
-aw32257_status_t aw32257_set_termination_current(
+aw32257_status_t
+aw32257_set_termination_current(
     aw32257_t * device,
     aw32257_term_current_code_t current_code)
 {
@@ -945,8 +1145,9 @@ aw32257_status_t aw32257_set_termination_current(
                                (uint8_t)current_code);
 }
 
-aw32257_status_t aw32257_set_dpm_voltage_mv(aw32257_t * device,
-                                             uint16_t voltage_mv)
+aw32257_status_t
+aw32257_set_dpm_voltage_mv(aw32257_t * device,
+                           uint16_t voltage_mv)
 {
     aw32257_status_t status;
     uint8_t encoded;
@@ -963,7 +1164,8 @@ aw32257_status_t aw32257_set_dpm_voltage_mv(aw32257_t * device,
                                encoded);
 }
 
-aw32257_status_t aw32257_set_termination_config(
+aw32257_status_t
+aw32257_set_termination_config(
     aw32257_t * device,
     const aw32257_termination_config_t * config)
 {
@@ -982,9 +1184,10 @@ aw32257_status_t aw32257_set_termination_config(
                                encoded);
 }
 
-aw32257_status_t aw32257_configure_otg_pin(aw32257_t * device,
-                                            bool enabled,
-                                            bool active_high)
+aw32257_status_t
+aw32257_configure_otg_pin(aw32257_t * device,
+                          bool enabled,
+                          bool active_high)
 {
     uint8_t encoded;
 
@@ -997,7 +1200,8 @@ aw32257_status_t aw32257_configure_otg_pin(aw32257_t * device,
                                encoded);
 }
 
-aw32257_status_t aw32257_set_boost_config(
+aw32257_status_t
+aw32257_set_boost_config(
     aw32257_t * device,
     const aw32257_boost_config_t * config)
 {
@@ -1016,7 +1220,10 @@ aw32257_status_t aw32257_set_boost_config(
                                encoded);
 }
 
-aw32257_status_t aw32257_current_code_to_ma_33mohm(
+/* ══════════════════════════ 电流换算与查表 ══════════════════════════ */
+
+aw32257_status_t
+aw32257_current_code_to_ma_33mohm(
     aw32257_current_code_t current_code,
     uint16_t * current_ma)
 {
@@ -1034,7 +1241,8 @@ aw32257_status_t aw32257_current_code_to_ma_33mohm(
     return AW32257_OK;
 }
 
-aw32257_status_t aw32257_termination_current_code_to_ma_33mohm(
+aw32257_status_t
+aw32257_termination_current_code_to_ma_33mohm(
     aw32257_term_current_code_t current_code,
     uint16_t * current_ma)
 {

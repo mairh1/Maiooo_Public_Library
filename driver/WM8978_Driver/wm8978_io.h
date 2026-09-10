@@ -1,9 +1,11 @@
-/*
+/**
  * @file    wm8978_io.h
  * @brief   WM8978 驱动移植契约
  * @details 核心仅通过下列固定函数访问硬件。在应用/BSP 中实现它们，
  *          模板见 port/wm8978_io_template.c。
  *          本头文件不得 include wm8978.h 或厂商头文件。
+ * @note    依赖边界：本头文件只被驱动核心 include；移植层实现只
+ *          include 本文件与平台头文件，不得反向调用驱动核心。
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -31,6 +33,8 @@ extern "C"
  *         超时、NACK 或其它总线失败返回 WM8978_IO_ERROR。
  * @note 失败时硬件副作用不确定。核心进入 DESYNCHRONIZED，复位前
  *       不得重试。每个 WM8978 实例都必须实现本函数。
+ * @note 可调用上下文：线程上下文调用，可能阻塞直至完成或超时，
+ *       禁止在 ISR 中调用。
  */
 int32_t wm8978_io_write_control(void *io_ctx,
                                  uint8_t first_byte,

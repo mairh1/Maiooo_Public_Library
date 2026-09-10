@@ -102,13 +102,15 @@ Invoke-Checked -Executable $rvGcc -Arguments @("--version")
 Invoke-Checked -Executable $rvRun -Arguments @("--version")
 
 # Resolve the datasheet PDF by wildcard so the ASCII-only script stays
-# encoding-safe regardless of the copied file name.
-$pdfFile = Get-ChildItem -LiteralPath $projectRoot -Filter "*.pdf" |
+# encoding-safe regardless of the copied file name. The datasheet archive
+# lives in the repository root datasheet/ directory.
+$datasheetRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "..\..\datasheet"))
+$pdfFile = Get-ChildItem -LiteralPath $datasheetRoot -Filter "INA219*.pdf" |
     Where-Object { -not $_.PSIsContainer } |
     Select-Object -First 1
 if ($null -eq $pdfFile)
 {
-    throw "No datasheet PDF found in $projectRoot"
+    throw "No datasheet PDF found in $datasheetRoot"
 }
 $pdfPath = $pdfFile.FullName
 $expectedPdfSha256 = "2C973858ED8290732F2AEC3EFA66230F69FD741C1DD9E888382632BB400E7770"

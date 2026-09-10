@@ -132,21 +132,17 @@ extern "C" {
  * 命令常量
  * ════════════════════════════════════════════════════════════════════════ */
 
-/**
- * @brief 模型表解锁字
- * @details 手册表述为"向地址 0x3F 写 0x57、向地址 0x3E 写 0x4A"。按本器件
- *          16 位寄存器规则（高字节在偶地址），等效为向 0x3E 一次写入
- *          0x4A57（0x4A 落在 0x3E、0x57 落在 0x3F）。
- */
-#define MAX17048_UNLOCK_VALUE       0x4A57
+#define MAX17048_UNLOCK_VALUE       0x4A57      /**< 模型表解锁字：手册为 0x3F←0x57、0x3E←0x4A；
+                                                     *  按 16 位寄存器规则（高字节在偶地址），
+                                                     *  等效为向 0x3E 一次写入 0x4A57
+                                                     *  （0x4A 落在 0x3E、0x57 落在 0x3F） */
 #define MAX17048_LOCK_VALUE         0x0000      /**< 模型表复锁字（0x3E/0x3F 写 0） */
 
 /** CMD 寄存器 POR 全复位命令（最后一个时钟后器件复位，无 ACK） */
 #define MAX17048_CMD_POR_RESET      0x5400
 
-/** VERSION 寄存器期望值（高 12 位，低 4 位为生产批次） */
-#define MAX17048_VERSION_EXPECTED   0x0010
-#define MAX17048_VERSION_MASK       0xFFF0
+#define MAX17048_VERSION_EXPECTED   0x0010      /**< VERSION 寄存器期望值（高 12 位，低 4 位为生产批次） */
+#define MAX17048_VERSION_MASK       0xFFF0      /**< VERSION 期望值比较掩码（取出高 12 位） */
 
 #ifdef __cplusplus
 }

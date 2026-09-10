@@ -17,11 +17,12 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-#define RGBLED_IO_OK       0
-#define RGBLED_IO_ERROR   (-1)
+#define RGBLED_IO_OK       0    /**< io 回调执行成功 */
+#define RGBLED_IO_ERROR   (-1)  /**< io 回调执行失败（不透传平台错误码） */
 
 /**
  * @brief 发送一颗灯的通道字节序列。
@@ -69,11 +70,12 @@ typedef void (*rgbled_io_unlock_fn_t)(void *io_ctx);
 /**
  * @brief 底层输出回调集合，由应用填充后经 rgbled_init() 绑定。
  */
-typedef struct {
-    rgbled_io_write_fn_t  write;    /**< 必选：发送通道字节 */
-    rgbled_io_latch_fn_t  latch;    /**< 建议提供：复位/锁存，NULL 则跳过 */
-    rgbled_io_lock_fn_t   lock;     /**< 可选：共享通道保护，NULL 不加锁 */
-    rgbled_io_unlock_fn_t unlock;   /**< 可选：与 lock 成对 */
+typedef struct
+{
+    rgbled_io_write_fn_t  write;    /**< 必选：发送通道字节，返回后数据须已完整发出 */
+    rgbled_io_latch_fn_t  latch;    /**< 建议提供：复位/锁存，保持不小于请求时间（默认 RGBLED_LATCH_US），NULL 则跳过 */
+    rgbled_io_lock_fn_t   lock;     /**< 可选：共享通道保护，覆盖完整一帧，NULL 不加锁 */
+    rgbled_io_unlock_fn_t unlock;   /**< 可选：与 lock 严格成对，show 的任何失败路径都会调用 */
 } rgbled_io_t;
 
 #ifdef __cplusplus

@@ -13,6 +13,10 @@
 #ifndef MAX17048_CONF_H
 #define MAX17048_CONF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ══════════════════════════════════════════════════════════════════════════
  * MAX17048_VARIANT —— 芯片变体（决定 VCELL 换算的节数）
  * ════════════════════════════════════════════════════════════════════════ */
@@ -84,6 +88,10 @@
 
 #ifndef MAX17048_MODEL_DELAY_MS
 #define MAX17048_MODEL_DELAY_MS    10
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* MAX17048_CONF_H */

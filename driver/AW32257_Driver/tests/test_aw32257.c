@@ -1,6 +1,15 @@
 /**
  * @file    test_aw32257.c
  * @brief   AW32257 可移植驱动的模拟 I2C 单元测试
+ * @details 以内存寄存器模拟 AW32257 并实现 aw32257_io.h 契约，覆盖
+ *          REG06 首笔访问、POR_REQUIRED 锁存、编码边界、保留位
+ *          读-改-写、无重试、快照全量提交与软复位时序等场景，
+ *          测试值锚定数据手册寄存器表。
+ * @note    宿主端运行（RV32 模拟器），仅依赖 C 标准库与驱动公共头；
+ *          本文件按测试脚手架约定只维护文件头注释。
+ * @author  Maiooo
+ * @version 1.0.0
+ * @date    2026-08-13
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -11,6 +20,7 @@
 #include <string.h>
 
 #include "aw32257.h"
+#include "aw32257_io.h"
 
 #define MOCK_LOG_CAPACITY 128U
 

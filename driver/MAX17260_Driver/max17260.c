@@ -42,7 +42,8 @@
  * @param   den  除数（正数）。
  * @retval  uint32_t  就近取整的商。
  */
-static uint32_t max17260_round_div_u32(uint32_t num, uint32_t den)
+static uint32_t
+max17260_round_div_u32(uint32_t num, uint32_t den)
 {
     return (num + den / 2u) / den;
 }
@@ -53,7 +54,8 @@ static uint32_t max17260_round_div_u32(uint32_t num, uint32_t den)
  * @param   den  除数（正数）。
  * @retval  int32_t  就近取整的商。
  */
-static int32_t max17260_round_div_i32(int32_t num, int32_t den)
+static int32_t
+max17260_round_div_i32(int32_t num, int32_t den)
 {
     if (num >= 0)
     {
@@ -69,7 +71,8 @@ static int32_t max17260_round_div_i32(int32_t num, int32_t den)
  * @param   hi   上限。
  * @retval  uint16_t  钳位后的值。
  */
-static uint16_t max17260_clamp_u16(uint16_t val, uint16_t lo, uint16_t hi)
+static uint16_t
+max17260_clamp_u16(uint16_t val, uint16_t lo, uint16_t hi)
 {
     if (val < lo)
     {
@@ -93,8 +96,8 @@ static uint16_t max17260_clamp_u16(uint16_t val, uint16_t lo, uint16_t hi)
  * @param   val  输出：16 位值。
  * @retval  max17260_result_t  OK 成功；ERR_IO 通信失败。
  */
-static max17260_result_t max17260_read_hw(max17260_dev_t *dev, uint8_t reg,
-                                          uint16_t *val)
+static max17260_result_t
+max17260_read_hw(max17260_dev_t *dev, uint8_t reg, uint16_t *val)
 {
     if (max17260_io_read_reg16(dev->io_ctx, dev->dev_addr, reg, val)
             != MAX17260_IO_OK)
@@ -112,7 +115,8 @@ static max17260_result_t max17260_read_hw(max17260_dev_t *dev, uint8_t reg,
  * @param   reg  寄存器地址。
  * @retval  bool  true 表示跳过校验。
  */
-static bool max17260_verify_skip(uint8_t reg)
+static bool
+max17260_verify_skip(uint8_t reg)
 {
     if (reg == MAX17260_REG_STATUS)
     {
@@ -139,8 +143,8 @@ static bool max17260_verify_skip(uint8_t reg)
  * @retval  max17260_result_t  OK 成功；ERR_IO 通信失败；
  *          ERR_VERIFY 回读不一致（VERIFY_WRITES=1 时）。
  */
-static max17260_result_t max17260_write_hw(max17260_dev_t *dev, uint8_t reg,
-                                           uint16_t val)
+static max17260_result_t
+max17260_write_hw(max17260_dev_t *dev, uint8_t reg, uint16_t val)
 {
 #if MAX17260_VERIFY_WRITES
     uint16_t rb;
@@ -178,8 +182,8 @@ static max17260_result_t max17260_write_hw(max17260_dev_t *dev, uint8_t reg,
  * @param   val   已位于目标位位置的新值。
  * @retval  max17260_result_t  见 max17260_read_hw/max17260_write_hw。
  */
-static max17260_result_t max17260_update_hw(max17260_dev_t *dev, uint8_t reg,
-                                            uint16_t mask, uint16_t val)
+static max17260_result_t
+max17260_update_hw(max17260_dev_t *dev, uint8_t reg, uint16_t mask, uint16_t val)
 {
     max17260_result_t res;
     uint16_t tmp;
@@ -200,8 +204,12 @@ static max17260_result_t max17260_update_hw(max17260_dev_t *dev, uint8_t reg,
 /**
  * @brief   容量（µVh / mAh）单位转换
  * @details MAX17260_RSENSE_MOHM=0 时返回原始 µVh；否则换算 mAh。
+ * @param   raw  RepCap / FullCapRep 类寄存器原始值。
+ * @param   out  输出：换算后的容量值。
+ * @retval  max17260_result_t  OK 成功。
  */
-static max17260_result_t max17260_capacity_from_raw(uint16_t raw, uint32_t *out)
+static max17260_result_t
+max17260_capacity_from_raw(uint16_t raw, uint32_t *out)
 {
     if (MAX17260_RSENSE_MOHM == 0)
     {
@@ -221,7 +229,8 @@ static max17260_result_t max17260_capacity_from_raw(uint16_t raw, uint32_t *out)
  * @brief   容量（mAh / µVh）反向单位转换
  * @details MAX17260_RSENSE_MOHM=0 时入参为 µVh；否则入参为 mAh。
  */
-static uint16_t max17260_capacity_to_raw(uint16_t val)
+static uint16_t
+max17260_capacity_to_raw(uint16_t val)
 {
     if (MAX17260_RSENSE_MOHM == 0)
     {
@@ -237,7 +246,8 @@ static uint16_t max17260_capacity_to_raw(uint16_t val)
  * @brief   电流（µV / mA）单位转换
  * @details MAX17260_RSENSE_MOHM=0 时返回原始 µV；否则换算 mA。
  */
-static max17260_result_t max17260_current_from_raw(int16_t raw, int32_t *out)
+static max17260_result_t
+max17260_current_from_raw(int16_t raw, int32_t *out)
 {
     int32_t uv;
 
@@ -255,8 +265,11 @@ static max17260_result_t max17260_current_from_raw(int16_t raw, int32_t *out)
 
 /**
  * @brief   电流（mA / µV）反向单位转换
+ * @param   val  待转换的电流值（MAX17260_RSENSE_MOHM=0 时为 µV，否则为 mA）。
+ * @retval  int16_t  寄存器原始值。
  */
-static int16_t max17260_current_to_raw(int32_t val)
+static int16_t
+max17260_current_to_raw(int32_t val)
 {
     int32_t uv;
 
@@ -275,8 +288,11 @@ static int16_t max17260_current_to_raw(int32_t val)
 
 /**
  * @brief   电压 LSB → mV（78.125µV/LSB，四舍五入）
+ * @param   raw  VCell 类寄存器原始值。
+ * @retval  uint32_t  电压值，单位 mV。
  */
-static uint32_t max17260_vcell_raw_to_mv(uint16_t raw)
+static uint32_t
+max17260_vcell_raw_to_mv(uint16_t raw)
 {
     /* mV = raw × 78.125µV / 1000，放大 10 倍避免小数：× 781 / 10000 */
     return max17260_round_div_u32((uint32_t)raw * 781u, 10000u);
@@ -284,8 +300,11 @@ static uint32_t max17260_vcell_raw_to_mv(uint16_t raw)
 
 /**
  * @brief   温度 LSB → 0.1℃（1/256℃/LSB，四舍五入）
+ * @param   raw  Temp 类寄存器原始值。
+ * @retval  int16_t  温度值，单位 0.1℃。
  */
-static int16_t max17260_temp_raw_to_x10(int16_t raw)
+static int16_t
+max17260_temp_raw_to_x10(int16_t raw)
 {
     /* 0.1℃ = raw × 10 / 256 = raw × 5 / 128 */
     return (int16_t)max17260_round_div_i32((int32_t)raw * 5, 128);
@@ -298,9 +317,8 @@ static int16_t max17260_temp_raw_to_x10(int16_t raw)
  * @param   seconds  输出：换算后的秒数。
  * @retval  max17260_result_t  OK 成功；ERR_IO 通信失败。
  */
-static max17260_result_t max17260_read_time_sec(max17260_dev_t *dev,
-                                                uint8_t reg,
-                                                uint32_t *seconds)
+static max17260_result_t
+max17260_read_time_sec(max17260_dev_t *dev, uint8_t reg, uint32_t *seconds)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -317,8 +335,12 @@ static max17260_result_t max17260_read_time_sec(max17260_dev_t *dev,
 /**
  * @brief   功率（µV² / mW）单位转换
  * @details MAX17260_RSENSE_MOHM=0 时返回原始 µV²；否则换算 mW。
+ * @param   raw  Power 寄存器原始值。
+ * @param   out  输出：换算后的功率值。
+ * @retval  max17260_result_t  OK 成功。
  */
-static max17260_result_t max17260_power_from_raw(int16_t raw, int32_t *out)
+static max17260_result_t
+max17260_power_from_raw(int16_t raw, int32_t *out)
 {
     int32_t uv2;
 
@@ -345,7 +367,8 @@ static max17260_result_t max17260_power_from_raw(int16_t raw, int32_t *out)
  * @details VAlrtTh / TAlrtTh / SAlrtTh / IAlrtTh 与 MaxMinVolt /
  *          MaxMinCurr / MaxMinTemp 寄存器布局一致，均为 Max 在高字节。
  */
-static uint16_t max17260_pack_minmax8(uint8_t min_code, uint8_t max_code)
+static uint16_t
+max17260_pack_minmax8(uint8_t min_code, uint8_t max_code)
 {
     return (uint16_t)(((uint16_t)max_code << 8u) | (uint16_t)min_code);
 }
@@ -353,8 +376,8 @@ static uint16_t max17260_pack_minmax8(uint8_t min_code, uint8_t max_code)
 /**
  * @brief   解码 Max/Min 8 位字段对（Max 高 8 位，Min 低 8 位）
  */
-static void max17260_unpack_minmax8(uint16_t val, uint8_t *min_code,
-                                    uint8_t *max_code)
+static void
+max17260_unpack_minmax8(uint16_t val, uint8_t *min_code, uint8_t *max_code)
 {
     *max_code = (uint8_t)(val >> 8u);
     *min_code = (uint8_t)(val & 0xFFu);
@@ -364,8 +387,8 @@ static void max17260_unpack_minmax8(uint16_t val, uint8_t *min_code,
  * API —— 1. 初始化 / 标识
  * ════════════════════════════════════════════════════════════════════════ */
 
-max17260_result_t max17260_init(max17260_dev_t *dev, void *io_ctx,
-                                uint8_t dev_addr)
+max17260_result_t
+max17260_init(max17260_dev_t *dev, void *io_ctx, uint8_t dev_addr)
 {
     max17260_result_t res;
     uint16_t status;
@@ -404,7 +427,8 @@ max17260_result_t max17260_init(max17260_dev_t *dev, void *io_ctx,
     return res;
 }
 
-max17260_result_t max17260_is_por(max17260_dev_t *dev, bool *por)
+max17260_result_t
+max17260_is_por(max17260_dev_t *dev, bool *por)
 {
     max17260_result_t res;
     uint16_t status;
@@ -431,8 +455,8 @@ max17260_result_t max17260_is_por(max17260_dev_t *dev, bool *por)
  * @brief   读 VCell 原始值（内部换算用）
  * @retval  max17260_result_t  OK 成功；ERR_PARAM 空指针；ERR_IO 通信失败。
  */
-static max17260_result_t max17260_read_vcell_raw(max17260_dev_t *dev,
-                                                 uint16_t *raw)
+static max17260_result_t
+max17260_read_vcell_raw(max17260_dev_t *dev, uint16_t *raw)
 {
     if ((dev == NULL) || (raw == NULL))
     {
@@ -442,7 +466,8 @@ static max17260_result_t max17260_read_vcell_raw(max17260_dev_t *dev,
     return max17260_read_hw(dev, MAX17260_REG_VCELL, raw);
 }
 
-max17260_result_t max17260_read_vcell(max17260_dev_t *dev, uint32_t *mv)
+max17260_result_t
+max17260_read_vcell(max17260_dev_t *dev, uint32_t *mv)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -466,8 +491,8 @@ max17260_result_t max17260_read_vcell(max17260_dev_t *dev, uint32_t *mv)
  * @brief   读 RepSOC 原始值（内部换算用）
  * @retval  max17260_result_t  OK 成功；ERR_PARAM 空指针；ERR_IO 通信失败。
  */
-static max17260_result_t max17260_read_soc_raw(max17260_dev_t *dev,
-                                               uint16_t *raw)
+static max17260_result_t
+max17260_read_soc_raw(max17260_dev_t *dev, uint16_t *raw)
 {
     if ((dev == NULL) || (raw == NULL))
     {
@@ -477,7 +502,8 @@ static max17260_result_t max17260_read_soc_raw(max17260_dev_t *dev,
     return max17260_read_hw(dev, MAX17260_REG_REPSOC, raw);
 }
 
-max17260_result_t max17260_read_soc(max17260_dev_t *dev, uint8_t *percent)
+max17260_result_t
+max17260_read_soc(max17260_dev_t *dev, uint8_t *percent)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -496,8 +522,8 @@ max17260_result_t max17260_read_soc(max17260_dev_t *dev, uint8_t *percent)
     return res;
 }
 
-max17260_result_t max17260_read_soc_precise(max17260_dev_t *dev,
-                                            uint16_t *percent_x100)
+max17260_result_t
+max17260_read_soc_precise(max17260_dev_t *dev, uint16_t *percent_x100)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -518,7 +544,8 @@ max17260_result_t max17260_read_soc_precise(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_read_temp_raw(max17260_dev_t *dev, int16_t *raw)
+max17260_result_t
+max17260_read_temp_raw(max17260_dev_t *dev, int16_t *raw)
 {
     max17260_result_t res;
     uint16_t tmp;
@@ -537,7 +564,8 @@ max17260_result_t max17260_read_temp_raw(max17260_dev_t *dev, int16_t *raw)
     return res;
 }
 
-max17260_result_t max17260_read_temp(max17260_dev_t *dev, int16_t *temp_x10)
+max17260_result_t
+max17260_read_temp(max17260_dev_t *dev, int16_t *temp_x10)
 {
     max17260_result_t res;
     int16_t raw;
@@ -556,7 +584,8 @@ max17260_result_t max17260_read_temp(max17260_dev_t *dev, int16_t *temp_x10)
     return res;
 }
 
-max17260_result_t max17260_read_current_raw(max17260_dev_t *dev, int16_t *raw)
+max17260_result_t
+max17260_read_current_raw(max17260_dev_t *dev, int16_t *raw)
 {
     max17260_result_t res;
     uint16_t tmp;
@@ -575,7 +604,8 @@ max17260_result_t max17260_read_current_raw(max17260_dev_t *dev, int16_t *raw)
     return res;
 }
 
-max17260_result_t max17260_read_current(max17260_dev_t *dev, int32_t *ma)
+max17260_result_t
+max17260_read_current(max17260_dev_t *dev, int32_t *ma)
 {
     max17260_result_t res;
     int16_t raw;
@@ -598,8 +628,8 @@ max17260_result_t max17260_read_current(max17260_dev_t *dev, int32_t *ma)
  * @brief   读 RepCap 原始值（内部换算用）
  * @retval  max17260_result_t  OK 成功；ERR_PARAM 空指针；ERR_IO 通信失败。
  */
-static max17260_result_t max17260_read_repcap_raw(max17260_dev_t *dev,
-                                                  uint16_t *raw)
+static max17260_result_t
+max17260_read_repcap_raw(max17260_dev_t *dev, uint16_t *raw)
 {
     if ((dev == NULL) || (raw == NULL))
     {
@@ -609,7 +639,8 @@ static max17260_result_t max17260_read_repcap_raw(max17260_dev_t *dev,
     return max17260_read_hw(dev, MAX17260_REG_REPCAP, raw);
 }
 
-max17260_result_t max17260_read_repcap(max17260_dev_t *dev, uint32_t *mah)
+max17260_result_t
+max17260_read_repcap(max17260_dev_t *dev, uint32_t *mah)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -628,7 +659,8 @@ max17260_result_t max17260_read_repcap(max17260_dev_t *dev, uint32_t *mah)
     return res;
 }
 
-max17260_result_t max17260_read_fullcaprep(max17260_dev_t *dev, uint32_t *mah)
+max17260_result_t
+max17260_read_fullcaprep(max17260_dev_t *dev, uint32_t *mah)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -647,7 +679,8 @@ max17260_result_t max17260_read_fullcaprep(max17260_dev_t *dev, uint32_t *mah)
     return res;
 }
 
-max17260_result_t max17260_read_tte(max17260_dev_t *dev, uint32_t *seconds)
+max17260_result_t
+max17260_read_tte(max17260_dev_t *dev, uint32_t *seconds)
 {
     max17260_result_t res;
 
@@ -661,7 +694,8 @@ max17260_result_t max17260_read_tte(max17260_dev_t *dev, uint32_t *seconds)
     return res;
 }
 
-max17260_result_t max17260_read_ttf(max17260_dev_t *dev, uint32_t *seconds)
+max17260_result_t
+max17260_read_ttf(max17260_dev_t *dev, uint32_t *seconds)
 {
     max17260_result_t res;
 
@@ -675,7 +709,8 @@ max17260_result_t max17260_read_ttf(max17260_dev_t *dev, uint32_t *seconds)
     return res;
 }
 
-max17260_result_t max17260_read_power(max17260_dev_t *dev, int32_t *mw)
+max17260_result_t
+max17260_read_power(max17260_dev_t *dev, int32_t *mw)
 {
     max17260_result_t res;
     int16_t raw;
@@ -694,7 +729,8 @@ max17260_result_t max17260_read_power(max17260_dev_t *dev, int32_t *mw)
     return res;
 }
 
-max17260_result_t max17260_read_cycles(max17260_dev_t *dev, uint16_t *cycles)
+max17260_result_t
+max17260_read_cycles(max17260_dev_t *dev, uint16_t *cycles)
 {
     if ((dev == NULL) || (cycles == NULL))
     {
@@ -704,7 +740,8 @@ max17260_result_t max17260_read_cycles(max17260_dev_t *dev, uint16_t *cycles)
     return max17260_read_hw(dev, MAX17260_REG_CYCLES, cycles);
 }
 
-max17260_result_t max17260_read_age(max17260_dev_t *dev, uint8_t *age)
+max17260_result_t
+max17260_read_age(max17260_dev_t *dev, uint8_t *age)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -723,7 +760,8 @@ max17260_result_t max17260_read_age(max17260_dev_t *dev, uint8_t *age)
     return res;
 }
 
-max17260_result_t max17260_read_dietemp(max17260_dev_t *dev, int16_t *temp_x10)
+max17260_result_t
+max17260_read_dietemp(max17260_dev_t *dev, int16_t *temp_x10)
 {
     max17260_result_t res;
     int16_t raw;
@@ -749,7 +787,8 @@ max17260_result_t max17260_read_dietemp(max17260_dev_t *dev, int16_t *temp_x10)
  * API —— 3. 平均与最大最小
  * ════════════════════════════════════════════════════════════════════════ */
 
-max17260_result_t max17260_read_avg_vcell(max17260_dev_t *dev, uint32_t *mv)
+max17260_result_t
+max17260_read_avg_vcell(max17260_dev_t *dev, uint32_t *mv)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -768,7 +807,8 @@ max17260_result_t max17260_read_avg_vcell(max17260_dev_t *dev, uint32_t *mv)
     return res;
 }
 
-max17260_result_t max17260_read_avg_current(max17260_dev_t *dev, int32_t *ma)
+max17260_result_t
+max17260_read_avg_current(max17260_dev_t *dev, int32_t *ma)
 {
     max17260_result_t res;
     int16_t raw;
@@ -787,7 +827,8 @@ max17260_result_t max17260_read_avg_current(max17260_dev_t *dev, int32_t *ma)
     return res;
 }
 
-max17260_result_t max17260_read_avg_temp(max17260_dev_t *dev, int16_t *temp_x10)
+max17260_result_t
+max17260_read_avg_temp(max17260_dev_t *dev, int16_t *temp_x10)
 {
     max17260_result_t res;
     int16_t raw;
@@ -806,7 +847,8 @@ max17260_result_t max17260_read_avg_temp(max17260_dev_t *dev, int16_t *temp_x10)
     return res;
 }
 
-max17260_result_t max17260_read_avg_power(max17260_dev_t *dev, int32_t *mw)
+max17260_result_t
+max17260_read_avg_power(max17260_dev_t *dev, int32_t *mw)
 {
     max17260_result_t res;
     int16_t raw;
@@ -825,9 +867,8 @@ max17260_result_t max17260_read_avg_power(max17260_dev_t *dev, int32_t *mw)
     return res;
 }
 
-max17260_result_t max17260_read_maxmin_volt(max17260_dev_t *dev,
-                                            uint32_t *max_mv,
-                                            uint32_t *min_mv)
+max17260_result_t
+max17260_read_maxmin_volt(max17260_dev_t *dev, uint32_t *max_mv, uint32_t *min_mv)
 {
     max17260_result_t res;
     uint16_t val;
@@ -852,9 +893,8 @@ max17260_result_t max17260_read_maxmin_volt(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_read_maxmin_curr(max17260_dev_t *dev,
-                                            int32_t *max_ma,
-                                            int32_t *min_ma)
+max17260_result_t
+max17260_read_maxmin_curr(max17260_dev_t *dev, int32_t *max_ma, int32_t *min_ma)
 {
     max17260_result_t res;
     uint16_t val;
@@ -888,9 +928,8 @@ max17260_result_t max17260_read_maxmin_curr(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_read_maxmin_temp(max17260_dev_t *dev,
-                                            int16_t *max_x10,
-                                            int16_t *min_x10)
+max17260_result_t
+max17260_read_maxmin_temp(max17260_dev_t *dev, int16_t *max_x10, int16_t *min_x10)
 {
     max17260_result_t res;
     uint16_t val;
@@ -915,7 +954,8 @@ max17260_result_t max17260_read_maxmin_temp(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_reset_maxmin(max17260_dev_t *dev)
+max17260_result_t
+max17260_reset_maxmin(max17260_dev_t *dev)
 {
     max17260_result_t res;
 
@@ -946,11 +986,10 @@ max17260_result_t max17260_reset_maxmin(max17260_dev_t *dev)
  * API —— 4. Model m5 EZ 配置
  * ════════════════════════════════════════════════════════════════════════ */
 
-max17260_result_t max17260_configure_model(max17260_dev_t *dev,
-                                           uint16_t design_mah,
-                                           uint16_t vempty_mv,
-                                           uint16_t vrecovery_mv,
-                                           uint16_t ichg_term_ma)
+max17260_result_t
+max17260_configure_model(max17260_dev_t *dev, uint16_t design_mah,
+                         uint16_t vempty_mv, uint16_t vrecovery_mv,
+                         uint16_t ichg_term_ma)
 {
     max17260_result_t res;
     uint16_t ve_code;
@@ -1019,7 +1058,8 @@ max17260_result_t max17260_configure_model(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_get_design_cap(max17260_dev_t *dev, uint32_t *mah)
+max17260_result_t
+max17260_get_design_cap(max17260_dev_t *dev, uint32_t *mah)
 {
     max17260_result_t res;
     uint16_t raw;
@@ -1038,8 +1078,8 @@ max17260_result_t max17260_get_design_cap(max17260_dev_t *dev, uint32_t *mah)
     return res;
 }
 
-max17260_result_t max17260_get_vempty(max17260_dev_t *dev, uint16_t *ve_mv,
-                                      uint16_t *vr_mv)
+max17260_result_t
+max17260_get_vempty(max17260_dev_t *dev, uint16_t *ve_mv, uint16_t *vr_mv)
 {
     max17260_result_t res;
     uint16_t val;
@@ -1064,7 +1104,8 @@ max17260_result_t max17260_get_vempty(max17260_dev_t *dev, uint16_t *ve_mv,
     return res;
 }
 
-max17260_result_t max17260_get_ichg_term(max17260_dev_t *dev, uint16_t *ma)
+max17260_result_t
+max17260_get_ichg_term(max17260_dev_t *dev, uint16_t *ma)
 {
     max17260_result_t res;
     int16_t raw16;
@@ -1095,9 +1136,8 @@ max17260_result_t max17260_get_ichg_term(max17260_dev_t *dev, uint16_t *ma)
  * API —— 5. Alert 阈值与状态服务
  * ════════════════════════════════════════════════════════════════════════ */
 
-max17260_result_t max17260_set_voltage_alerts(max17260_dev_t *dev,
-                                              uint16_t min_mv,
-                                              uint16_t max_mv)
+max17260_result_t
+max17260_set_voltage_alerts(max17260_dev_t *dev, uint16_t min_mv, uint16_t max_mv)
 {
     uint16_t code_min;
     uint16_t code_max;
@@ -1122,9 +1162,8 @@ max17260_result_t max17260_set_voltage_alerts(max17260_dev_t *dev,
                                                    (uint8_t)code_max));
 }
 
-max17260_result_t max17260_get_voltage_alerts(max17260_dev_t *dev,
-                                              uint16_t *min_mv,
-                                              uint16_t *max_mv)
+max17260_result_t
+max17260_get_voltage_alerts(max17260_dev_t *dev, uint16_t *min_mv, uint16_t *max_mv)
 {
     max17260_result_t res;
     uint16_t val;
@@ -1148,8 +1187,8 @@ max17260_result_t max17260_get_voltage_alerts(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_set_temp_alerts(max17260_dev_t *dev,
-                                           int16_t min_x10, int16_t max_x10)
+max17260_result_t
+max17260_set_temp_alerts(max17260_dev_t *dev, int16_t min_x10, int16_t max_x10)
 {
     int16_t min_c;
     int16_t max_c;
@@ -1188,9 +1227,8 @@ max17260_result_t max17260_set_temp_alerts(max17260_dev_t *dev,
                                                    (uint8_t)max_c));
 }
 
-max17260_result_t max17260_get_temp_alerts(max17260_dev_t *dev,
-                                           int16_t *min_x10,
-                                           int16_t *max_x10)
+max17260_result_t
+max17260_get_temp_alerts(max17260_dev_t *dev, int16_t *min_x10, int16_t *max_x10)
 {
     max17260_result_t res;
     uint16_t val;
@@ -1214,8 +1252,8 @@ max17260_result_t max17260_get_temp_alerts(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_set_soc_alerts(max17260_dev_t *dev,
-                                          uint8_t min_pct, uint8_t max_pct)
+max17260_result_t
+max17260_set_soc_alerts(max17260_dev_t *dev, uint8_t min_pct, uint8_t max_pct)
 {
     if (dev == NULL)
     {
@@ -1231,9 +1269,8 @@ max17260_result_t max17260_set_soc_alerts(max17260_dev_t *dev,
                              max17260_pack_minmax8(min_pct, max_pct));
 }
 
-max17260_result_t max17260_get_soc_alerts(max17260_dev_t *dev,
-                                          uint8_t *min_pct,
-                                          uint8_t *max_pct)
+max17260_result_t
+max17260_get_soc_alerts(max17260_dev_t *dev, uint8_t *min_pct, uint8_t *max_pct)
 {
     max17260_result_t res;
     uint16_t val;
@@ -1252,8 +1289,8 @@ max17260_result_t max17260_get_soc_alerts(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_set_current_alerts(max17260_dev_t *dev,
-                                              int32_t min_ma, int32_t max_ma)
+max17260_result_t
+max17260_set_current_alerts(max17260_dev_t *dev, int32_t min_ma, int32_t max_ma)
 {
     uint8_t imax;
     uint8_t imin;
@@ -1275,9 +1312,8 @@ max17260_result_t max17260_set_current_alerts(max17260_dev_t *dev,
                              max17260_pack_minmax8(imin, imax));
 }
 
-max17260_result_t max17260_get_current_alerts(max17260_dev_t *dev,
-                                              int32_t *min_ma,
-                                              int32_t *max_ma)
+max17260_result_t
+max17260_get_current_alerts(max17260_dev_t *dev, int32_t *min_ma, int32_t *max_ma)
 {
     max17260_result_t res;
     uint16_t val;
@@ -1303,8 +1339,8 @@ max17260_result_t max17260_get_current_alerts(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_get_status(max17260_dev_t *dev,
-                                      max17260_status_t *status)
+max17260_result_t
+max17260_get_status(max17260_dev_t *dev, max17260_status_t *status)
 {
     max17260_result_t res;
     uint16_t val;
@@ -1336,8 +1372,8 @@ max17260_result_t max17260_get_status(max17260_dev_t *dev,
     return res;
 }
 
-max17260_result_t max17260_clear_alerts(max17260_dev_t *dev,
-                                        uint16_t status_bits)
+max17260_result_t
+max17260_clear_alerts(max17260_dev_t *dev, uint16_t status_bits)
 {
     if (dev == NULL)
     {
@@ -1354,8 +1390,8 @@ max17260_result_t max17260_clear_alerts(max17260_dev_t *dev,
 }
 
 #if MAX17260_USE_SERIAL_NUMBER
-max17260_result_t max17260_read_serial(max17260_dev_t *dev,
-                                       max17260_serial_t *sn)
+max17260_result_t
+max17260_read_serial(max17260_dev_t *dev, max17260_serial_t *sn)
 {
     max17260_result_t res;
     uint16_t cfg2_old = 0u;
@@ -1411,8 +1447,8 @@ max17260_result_t max17260_read_serial(max17260_dev_t *dev,
  * API —— 6. 寄存器级原始访问
  * ════════════════════════════════════════════════════════════════════════ */
 
-max17260_result_t max17260_read_reg(max17260_dev_t *dev, uint8_t reg,
-                                    uint16_t *val)
+max17260_result_t
+max17260_read_reg(max17260_dev_t *dev, uint8_t reg, uint16_t *val)
 {
     if ((dev == NULL) || (val == NULL))
     {
@@ -1422,8 +1458,8 @@ max17260_result_t max17260_read_reg(max17260_dev_t *dev, uint8_t reg,
     return max17260_read_hw(dev, reg, val);
 }
 
-max17260_result_t max17260_write_reg(max17260_dev_t *dev, uint8_t reg,
-                                     uint16_t val)
+max17260_result_t
+max17260_write_reg(max17260_dev_t *dev, uint8_t reg, uint16_t val)
 {
     max17260_result_t res;
 
@@ -1439,8 +1475,9 @@ max17260_result_t max17260_write_reg(max17260_dev_t *dev, uint8_t reg,
     return res;
 }
 
-max17260_result_t max17260_update_bits(max17260_dev_t *dev, uint8_t reg,
-                                       uint16_t mask, uint16_t val)
+max17260_result_t
+max17260_update_bits(max17260_dev_t *dev, uint8_t reg, uint16_t mask,
+                     uint16_t val)
 {
     max17260_result_t res;
 

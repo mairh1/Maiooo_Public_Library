@@ -2,6 +2,10 @@
  * @file    wm8978_ch32_i2c_port.c
  * @brief   WM8978 的 SDK 无关 CH32 2 线适配器
  *
+ * @author  Maiooo
+ * @version 1.0.0
+ * @date    2026-08-13
+ *
  * SPDX-License-Identifier: WTFPL
  */
 

@@ -27,7 +27,8 @@ extern "C" {
 #define MAX17048_IO_ERROR   -1  /**< 任意通信失败（不透传平台错误码） */
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 移植契约函数（必选 4 个）
+ * 移植契约函数（必选 3 个 + 条件必选 1 个（MAX17048_USE_MODEL_TABLE=1 时需
+ * 实现 delay_ms）+ 可选 2 个）
  * ════════════════════════════════════════════════════════════════════════ */
 
 /**
@@ -75,6 +76,7 @@ int max17048_io_read_reg16(void *io_ctx, uint8_t dev_addr, uint8_t reg,
 int max17048_io_write_reg16(void *io_ctx, uint8_t dev_addr, uint8_t reg,
                             uint16_t val);
 
+#if MAX17048_USE_MODEL_TABLE
 /**
  * @brief   毫秒级延时
  * @details 仅模型表加载序列使用（MAX17048_USE_MODEL_TABLE=1 时必选，
@@ -83,6 +85,7 @@ int max17048_io_write_reg16(void *io_ctx, uint8_t dev_addr, uint8_t reg,
  * @note    线程上下文调用，禁止在 ISR 中调用。
  */
 void max17048_io_delay_ms(uint32_t ms);
+#endif /* MAX17048_USE_MODEL_TABLE */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * 移植契约函数（可选，MAX17048_THREAD_SAFE=1 时必须实现）

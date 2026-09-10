@@ -1,0 +1,16 @@
+# 行尾策略（对应 mcu-universal-driver S2：LF 行尾）
+# 源码与文档统一 LF；PDF 等二进制不做任何转换。
+* text=auto
+*.c    text eol=lf
+*.h    text eol=lf
+*.md   text eol=lf
+*.py   text eol=lf
+*.sh   text eol=lf
+*.ps1  text eol=crlf
+*.pdf  binary
+*.PNG  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.elf  binary
+*.hex  binary

@@ -1,14 +1,17 @@
 # INA219 电流/功率监测通用驱动
 
-面向 32 位 MCU 的 TI INA219A/INA219B 零漂移电流监测驱动。核心使用纯 C99，不含任何厂商头文件，不分配动态内存，不使用浮点、递归或全局可变状态；CH32 等平台通过 `ina219_io.h` 移植契约接入。
+面向 32 位 MCU 的 TI INA219A/INA219B 零漂移电流监测驱动。核心使用纯 C99，不含任何厂商头文件，
+不分配动态内存，不使用浮点、递归或全局可变状态；CH32 等平台通过 `ina219_io.h` 移植契约接入。
 
-实现依据本目录中的数据手册 `ina219_ti_zhcsfn9g.pdf`：
+实现依据归档在项目根 [datasheet/INA219_ti_zhcsfn9g.pdf](../../datasheet/INA219_ti_zhcsfn9g.pdf)：
 
 - 芯片手册：INA219, **ZHCSFN9G**（2008-08 初版，2015-12 修订，Texas Instruments，中文版）
 - 文件 SHA-256：`2C973858ED8290732F2AEC3EFA66230F69FD741C1DD9E888382632BB400E7770`
 - 驱动版本：1.0.0
 
-> 默认配置按 **1Ω 采样电阻** 设计：PGA /8（±320mV 满量程）配 Current_LSB = 10µA，校准寄存器恰为 4096（0x1000），电流量程 ±320mA、分辨率 10µA、功率分辨率 200µW，常用换算零舍入损失。换采样电阻时改 `INA219_SHUNT_UOHMS` 或运行时调 `ina219_set_calibration()` 即可。
+> 默认配置按 **1Ω 采样电阻** 设计：PGA /8（±320mV 满量程）配 Current_LSB = 10µA，校准寄存器恰为
+> 4096（0x1000），电流量程 ±320mA、分辨率 10µA、功率分辨率 200µW，常用换算零舍入损失。换采样电阻
+> 时改 `INA219_SHUNT_UOHMS` 或运行时调 `ina219_set_calibration()` 即可。
 
 ## 1. 架构（分层设计）
 
@@ -29,7 +32,9 @@
 +--------------------------------------+
 ```
 
-**线程安全（默认）**：不同 `ina219_dev_t` 实例之间并发安全；同一实例的并发访问需外部保护。置 `INA219_THREAD_SAFE=1` 后，驱动在多笔总线访问的 API 前后调用 `ina219_io_lock/unlock()`（由移植层实现，如 RTOS 互斥量）。
+**线程安全（默认）**：不同 `ina219_dev_t` 实例之间并发安全；同一实例的并发访问需外部保护。置
+`INA219_THREAD_SAFE=1` 后，驱动在多笔总线访问的 API 前后调用 `ina219_io_lock/unlock()`
+（由移植层实现，如 RTOS 互斥量）。
 
 **多实例**：A1/A0 引脚组合出 16 个地址（0x40~0x4F），同一条总线上可挂多片 INA219，各用一个句柄分别 `init`；io_ctx 支持多总线路由。
 
@@ -39,7 +44,9 @@
 2. 按需调整 `ina219_conf.h`（采样电阻、Current_LSB、量程、功能开关），或用编译器 `-D` 覆盖。
 3. 调用 `ina219_init()`，之后核心文件零改动。
 
-**移植契约的硬性要求**：器件全部寄存器为 16 位，**两字节必须在同一 I2C 事务中传输**（写：S+地址W+寄存器+高字节+低字节+P；读：带 Sr 重复起始），高字节在前。`INA219_USE_TRIGGERED=0` 时 `ina219_io_delay_ms()` 可放空实现。
+**移植契约的硬性要求**：器件全部寄存器为 16 位，**两字节必须在同一 I2C 事务中传输**
+（写：S+地址W+寄存器+高字节+低字节+P；读：带 Sr 重复起始），高字节在前。
+`INA219_USE_TRIGGERED=0` 时 `ina219_io_delay_ms()` 可放空实现。
 
 ## 3. 使用示例（CH32）
 
@@ -95,7 +102,9 @@ void app_single_shot(void)
 
 ## 4. API 参考
 
-单位约定：分流电压 **µV**，总线电压 **mV**，电流 **µA**，功率 **µW**，采样电阻 **µΩ**，Current_LSB **nA**。全部定点运算（电流/功率换算与校准计算内部使用 64 位整数）。set 类函数按硬件档位就近取整并钳位，对应 get 返回实际生效值。
+单位约定：分流电压 **µV**，总线电压 **mV**，电流 **µA**，功率 **µW**，采样电阻 **µΩ**，Current_LSB
+**nA**。全部定点运算（电流/功率换算与校准计算内部使用 64 位整数）。set 类函数按硬件档位就近取整并
+钳位，对应 get 返回实际生效值。
 
 ### 4.1 初始化 / 复位
 
@@ -110,14 +119,14 @@ void app_single_shot(void)
 | --- | --- |
 | `ina219_set_bus_range(dev, range32v)` / `get` | 总线量程 16V / 32V（BRNG 位），分辨率固定 4mV |
 | `ina219_set_pga_range(dev, mv)` / `get` | 分流满量程 ±40/±80/±160/±320mV 四档就近取整；量程(mA) = 档位(mV)/R(Ω) |
-| `ina219_set_adc(dev, badc, sadc)` / `get` | BADC/SADC 档位（`INA219_ADC_*` 宏：9~12bit 或 12bit×2~128 次平均，转换时间 84µs~68.1ms） |
+| `ina219_set_adc(dev, badc, sadc)` / `get` | BADC/SADC 档位（`INA219_ADC_*`）：9~12bit/12bit×2~128 平均 |
 | `ina219_set_mode(dev, mode)` / `get` | 8 种模式：掉电 / 触发单次×3 / ADC 关 / 连续×3 |
 
 ### 4.3 校准
 
 | 函数 | 说明 |
 | --- | --- |
-| `ina219_set_calibration(dev, shunt_uohms, current_lsb_na)` | 按手册公式 Cal = trunc(0.04096/(LSB×R)) 写校准寄存器（奇数值自动清 void 位）；超界返回 ERR_PARAM |
+| `ina219_set_calibration(dev, shunt_uohms, current_lsb_na)` | 按手册公式写校准；奇数值清 void 位；超界 ERR_PARAM |
 | `ina219_get_calibration(dev, &shunt, &lsb, &cal)` | 回读器件校准寄存器 + 句柄缓存参数 |
 
 ### 4.4 测量读取
@@ -127,7 +136,7 @@ void app_single_shot(void)
 | `ina219_read_shunt_voltage(dev, &uv)` / `_raw` | µV = (int16)raw × 10（LSB 10µV，各 PGA 档通用） |
 | `ina219_read_bus_voltage(dev, &mv)` / `_raw` | mV = (raw >> 3) × 4（寄存器左对齐，标志位自动剔除） |
 | `ina219_read_current(dev, &ua)` / `_raw` | µA = raw × Current_LSB / 1000，四舍五入，依赖校准 |
-| `ina219_read_power(dev, &uw)` / `_raw` | µW = raw × Current_LSB × 20 / 1000（功率 LSB 恒为电流 LSB 的 20 倍）；`INA219_USE_POWER=0` 裁剪 |
+| `ina219_read_power(dev, &uw)` / `_raw` | µW = raw × Current_LSB × 20 / 1000；`USE_POWER=0` 裁剪 |
 | `ina219_is_conversion_ready(dev, &ready)` | CNVR 位：最近一次转换是否完成 |
 | `ina219_is_math_overflow(dev, &ovf)` | OVF 位：电流/功率乘法是否溢出 |
 
@@ -192,12 +201,14 @@ void app_single_shot(void)
 
 ## 7. 验证
 
-`tests/run_tests.ps1` 一键门禁（需 MounRiver 工具链，路径可 `-ArmToolchainBin`/`-RvToolchainBin` 或环境变量 `INA219_ARM_TOOLCHAIN_BIN`/`INA219_RV_TOOLCHAIN_BIN` 指定）：
+`tests/run_tests.ps1` 一键门禁（需 MounRiver 工具链，路径可 `-ArmToolchainBin`/`-RvToolchainBin`
+或环境变量 `INA219_ARM_TOOLCHAIN_BIN`/`INA219_RV_TOOLCHAIN_BIN` 指定）：
 
 - 数据手册 PDF SHA-256 校验；
 - 核心五件套平台 include 边界扫描；
 - ARM Cortex-M0 + RV32IMAC 双工具链 `-Wall -Wextra -Werror -pedantic` 编译（核心 + CH32 桥接 + 示例）；
-- RV32 模拟器 mock-I2C 单元测试（默认与 `VERIFY_WRITES=1` 两套配置，153 项检查，换算锚点取自数据手册 Table 8：2mΩ/1mA 校准 → 10A/119.8W）；
+- RV32 模拟器 mock-I2C 单元测试（默认与 `VERIFY_WRITES=1` 两套配置，153 项检查，换算锚点取自
+  数据手册 Table 8：2mΩ/1mA 校准 → 10A/119.8W）；
 - `THREAD_SAFE=1`、`USE_TRIGGERED=0 + USE_POWER=0` 裁剪配置编译检查。
 
 ## 8. 文件清单
@@ -211,4 +222,4 @@ void app_single_shot(void)
 | `port/ina219_io_template.c` | 移植模板（STM32 HAL / ESP-IDF / 伪代码示例） |
 | `examples/ch32/` | CH32 桥接与完整使用示例 |
 | `tests/` | mock 单元测试与门禁脚本 |
-| `ina219_ti_zhcsfn9g.pdf` | TI 数据手册存档 |
+| `datasheet/INA219_ti_zhcsfn9g.pdf` | TI 数据手册存档（项目根 datasheet/ 目录） |

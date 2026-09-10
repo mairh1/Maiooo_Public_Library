@@ -1,6 +1,6 @@
 # WM8978 通用驱动
 
-这是依据仓库内 `C323850_音频接口芯片_WM8978CGEFL-RV_规格书_WJ258645.PDF`（WM8978 Production Data，Rev 4.5，2011-10）编写的可移植 C99 驱动。核心层不包含任何 CH32/WCH 头文件，可用于 ARM Cortex-M、RV32 以及其他 32 位单片机；CH32 只在移植层实现固定 IO 契约并绑定具体 I2C、GPIO、延时和音频外设。
+这是依据归档在项目根 [datasheet/WM8978_C323850.pdf](../../datasheet/WM8978_C323850.pdf)（WM8978 Production Data，Rev 4.5，2011-10）编写的可移植 C99 驱动。核心层不包含任何 CH32/WCH 头文件，可用于 ARM Cortex-M、RV32 以及其他 32 位单片机；CH32 只在移植层实现固定 IO 契约并绑定具体 I2C、GPIO、延时和音频外设。
 
 ## 文件说明
 
@@ -9,12 +9,39 @@
 | `wm8978_regs.h` | 52 个有效寄存器、复位值、位域与协议常量 |
 | `wm8978.h` | 平台无关公共 API、句柄与固定 IO 契约引用 |
 | `wm8978_io.h` | 固定控制帧写入与毫秒延时移植契约 |
+| `wm8978_conf.h` | 编译期配置入口（当前版本无功能裁剪项，五件套固定文件与未来配置入口） |
 | `port/wm8978_io_template.c` | 移植层实现模板 |
 | `wm8978.c` | 写控制字、影子寄存器、保留位保护及常用高层功能 |
 | `examples/ch32/wm8978_ch32_i2c_port.*` | 不绑定具体 WCH SDK 的 CH32 2-wire 适配层 |
 | `examples/ch32/wm8978_ch32_example.*` | I2S、16 位、Codec 从机、48 kHz 系数组的明确示例 |
 | `docs/datasheet-notes.md` | 数据手册页码依据、内部矛盾及实现取舍 |
 | `tests/` | 假总线行为测试、RV32I 解释执行器、公共头和多翻译单元编译夹具 |
+| [../../datasheet/WM8978_C323850.pdf](../../datasheet/WM8978_C323850.pdf) | 芯片手册归档：项目根 `datasheet/` 目录，WM8978 Production Data，Rev 4.5（2011-10） |
+
+## 分层架构
+
+```
++----------------------------------------------------+
+|  应用层                                             |  用户代码 / examples/ch32
++----------------------------------------------------+
+          |  公共 API（wm8978.h）+ 统一结果码 wm8978_status_t
++----------------------------------------------------+
+|  驱动核心    wm8978.c                               |  纯 C99，零平台代码
+|  配置入口    wm8978_conf.h（当前无功能裁剪项）       |
+|  寄存器定义  wm8978_regs.h                          |
++----------------------------------------------------+
+          |  移植契约（wm8978_io.h）：2 个固定 io 函数
+          |    wm8978_io_write_control()  控制帧写入（必选）
+          |    wm8978_io_delay_ms()       毫秒延时（上电类 API 必选）
++----------------------------------------------------+
+|  移植层（你实现）                                    |  port/wm8978_io_template.c
+|                                                     |  CH32 / STM32 / ESP32 / ...
++----------------------------------------------------+
+          |
+硬件（2/3 线控制接口、I2S 音频数据接口、MCLK 与电源）
+```
+
+核心层只调用 `wm8978_io.h` 的契约函数，不出现任何厂商符号；`wm8978_conf.h` 当前没有配置宏——控制事务超时（`wm8978_bind()` 传入）与 VMID 稳定延时（随板级电容实测）都是运行期参数，因此不存在可裁剪的编译期开关，该文件仅作为五件套固定文件与未来配置入口保留。
 
 ## 驱动边界
 
@@ -37,6 +64,12 @@
 - 控制总线每一步的有限超时。
 
 核心不动态分配内存、不递归、不包含厂商寄存器、不在 ISR 中阻塞。`wm8978_t` 由调用者持有；同一实例不是可重入对象，任务与中断之间必须由上层串行化。
+
+## 线程安全
+
+- 不同 `wm8978_t` 实例之间并发安全：全部可变状态都在实例内部，核心没有任何可变静态变量，`io_ctx` 支持各实例绑定不同总线。
+- 同一实例不是可重入对象：任务与中断之间必须由上层串行化（核心不会在 ISR 中调用或阻塞）。
+- `wm8978_bind()`、软复位等初始化/同步操作与运行期调用的并发不受支持，由调用者保证时序。
 
 ## 控制接口接线
 
@@ -153,9 +186,7 @@ PLL 中 `f1 = MCLK / (PLLPRESCALE ? 2 : 1)`，公式为 `N=floor(f2/f1)`、`K=fl
 
 ### 音量编码
 
-- DAC/ADC 数字音量：0 为数字静音，1 为 -127 dB，之后每级 0.5 dB，255 为 0 dB。
-- 输入 PGA：0..63 对应 -12 dB..+35.25 dB，每级 0.75 dB。
-- OUT1/OUT2：0..63 对应 -57 dB..+6 dB，每级 1 dB；57 为 0 dB。
+各音量/增益码点与物理单位（dB）的对应关系整理进下文 [API 参考](#api-参考) 的「音量与增益码点单位」表。
 
 立体声 API 总是先写左通道 `VU=0`，再写右通道 `VU=1`，使左右同步更新。
 
@@ -175,6 +206,85 @@ status = wm8978_update_bits(&codec,
 原始 API 仍会拒绝保留地址、超出 9 位的数据、修改保留位的掩码或完整值。它不会替调用者判断每个可写位域中的“保留编码”，也不会强制 PLL、电源或输出路径的全部顺序；使用高级功能时仍需对照规格书。一个必须保护影子一致性的例外是：ADC 或 DAC 开启时，驱动会拒绝改变 R18 `EQ3DMODE`，因为芯片会拒绝该位变化。
 
 双声道更新、PLL 配置、全输出静音和上下电都是多控制帧操作，不具备原子性。任意一帧报错后都不要直接重试剩余步骤；恢复总线并软复位 Codec，再从完整初始化流程开始。
+
+## API 参考
+
+除三个查询函数外，全部公共函数返回 `wm8978_status_t`；`0` 为成功，负值为对应错误。多帧 API 不具备原子性，任意一帧报错后先恢复总线并软复位，不要直接重试剩余步骤。
+
+### 初始化与查询
+
+| 函数 | 返回 | 说明 |
+| --- | --- | --- |
+| `wm8978_bind(device, io_ctx, io_timeout_ms)` | status | 绑定 io 上下文与事务超时（毫秒，非零），进入 `BOUND`；不访问总线 |
+| `wm8978_soft_reset(device)` | status | 写 R0，影子同步为复位默认值，进入 `READY` |
+| `wm8978_assume_power_on_reset(device)` | status | 不写总线直接装载复位默认值；仅板级确认 POR 后可用 |
+| `wm8978_get_lifecycle(device)` | lifecycle | 读取生命周期（device 为 NULL 返回 `UNBOUND`） |
+| `wm8978_get_last_port_error(device)` | int32_t | 最近一次 io 层原始返回值（0 为成功；NULL 返回 0） |
+| `wm8978_register_is_valid(addr)` | bool | 地址是否属于 52 个有效寄存器 |
+| `wm8978_pack_control_frame(addr, value, frame[2])` | status | 寄存器地址/9 位值打包为 B15:B8 与 B7:B0 两个字节 |
+
+### 寄存器级访问
+
+| 函数 | 返回 | 说明 |
+| --- | --- | --- |
+| `wm8978_get_shadow_register(device, addr, &value)` | status | 读软件影子（非硬件读回）；R0 无影子 |
+| `wm8978_write_register(device, addr, value)` | status | 写完整 9 位值并提交影子；写 R0 即软复位 |
+| `wm8978_update_bits(device, addr, mask, field_value)` | status | 基于影子的位域更新；无变化且无触发位时不访问总线 |
+
+### 音频接口 / 时钟 / PLL
+
+| 函数 | 返回 | 说明 |
+| --- | --- | --- |
+| `wm8978_configure_audio_interface(device, &config)` | status | 一次写 R4：格式、字长、BCLK/LRC 极性、左右交换、单声道 |
+| `wm8978_configure_clock(device, &config)` | status | 更新 R6：主从、时钟源、MCLKDIV、BCLKDIV（含 PLL 顺序检查） |
+| `wm8978_set_filter_sample_rate(device, group)` | status | 写 R7 SR 滤波器系数组（不产生采样时钟） |
+| `wm8978_configure_pll(device, &config)` | status | 写 R36-R39 原始 N/K；N 限 6..12，K 为 24 位小数 |
+| `wm8978_set_pll_enabled(device, enabled)` | status | 带顺序检查地置位/清除 R1 `PLLEN` |
+
+### 音量与增益
+
+| 函数 | 返回 | 说明 |
+| --- | --- | --- |
+| `wm8978_set_dac_digital_volume(device, left_code, right_code)` | status | R11/R12 数字音量码点（单位见下表），左右同步 |
+| `wm8978_set_adc_digital_volume(device, left_code, right_code)` | status | R15/R16 数字音量码点，左右同步 |
+| `wm8978_set_input_pga(device, &config)` | status | R45/R46 输入 PGA 增益、静音、过零，左右同步 |
+| `wm8978_set_output_volume(device, output, &config)` | status | R52/R53（OUT1）或 R54/R55（OUT2）音量、静音、过零 |
+| `wm8978_mute_analogue_outputs(device, mute)` | status | 静音/解除 R52-R57 全部模拟输出 MUTE |
+
+### 上下电
+
+| 函数 | 返回 | 说明 |
+| --- | --- | --- |
+| `wm8978_power_up_nonboost_out1(device, vmid, vmid_settle_ms)` | status | 手册第 83 页非 1.5x Boost OUT1 上电序列；返回时保持静音 |
+| `wm8978_power_down(device)` | status | 先静音再依次写 R1/R2/R3 = 0 |
+
+### 音量与增益码点单位
+
+| 码点 | 范围 | 步进 | 备注 |
+| --- | --- | --- | --- |
+| DAC/ADC 数字音量 0 | 数字静音 | — | 码点 0 等效数字静音 |
+| DAC/ADC 数字音量 1..255 | -127 dB .. 0 dB | 0.5 dB/码点 | 255 为 0 dB |
+| 输入 PGA 0..63 | -12 dB .. +35.25 dB | 0.75 dB/码点 | R45/R46 |
+| OUT1/OUT2 0..63 | -57 dB .. +6 dB | 1 dB/码点 | 57 为 0 dB；`vmid_settle_ms` 单位为毫秒、须板级实测 |
+
+### 结果码（wm8978_status_t）
+
+| 结果码 | 语义 |
+| --- | --- |
+| `WM8978_OK` | 成功 |
+| `WM8978_ERR_NULL_POINTER` | 必需指针参数为 NULL |
+| `WM8978_ERR_INVALID_ARGUMENT` | 参数取值非法（超时 0、掩码与值不匹配、DSP/LRC 语义混用等） |
+| `WM8978_ERR_NOT_BOUND` | 实例尚未 `wm8978_bind()` |
+| `WM8978_ERR_NOT_READY` | 已绑定但影子未同步，须先软复位或确认 POR |
+| `WM8978_ERR_RANGE` | 数值超出编码范围（码点、分频档位、PLL N/K） |
+| `WM8978_ERR_INVALID_REGISTER` | 地址不在有效集合，或该操作不接受此地址 |
+| `WM8978_ERR_RESERVED_BITS` | 保留位偏离数据手册复位值 |
+| `WM8978_ERR_IO` | 控制帧传输失败；原始错误经 `wm8978_get_last_port_error()` 获取 |
+| `WM8978_ERR_STATE` | 器件状态不允许（EQ3DMODE 运行期切换、PLL 顺序、上电前置条件） |
+| `WM8978_ERR_NO_SHADOW` | 该地址没有影子值（R0 非锁存） |
+| `WM8978_ERR_DELAY_REQUIRED` | 需要板级延时支持的场合（当前核心未使用，保留语义） |
+| `WM8978_ERR_UNSUPPORTED` | 不支持的组合（右对齐 + 32 位字长） |
+| `WM8978_ERR_DESYNCHRONIZED` | 端口错误后失步，须经确认的复位恢复，不得直接重试 |
 
 ## 防爆音上下电
 

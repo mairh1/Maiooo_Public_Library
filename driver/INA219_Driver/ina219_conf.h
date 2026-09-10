@@ -16,6 +16,10 @@
 #ifndef INA219_CONF_H
 #define INA219_CONF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ══════════════════════════════════════════════════════════════════════════
  * 测量系统参数（init 时写入器件）
  * ══════════════════════════════════════════════════════════════════════════ */
@@ -98,7 +102,7 @@
  * 免实现 delay。 */
 
 #ifndef INA219_USE_TRIGGERED
-#define INA219_USE_TRIGGERED   1
+#define INA219_USE_TRIGGERED   1      /**< 1=提供触发/等待转换 API；0=裁剪并免实现 io 延时 */
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -109,7 +113,7 @@
  * wait_conversion 不再受该副作用影响）。 */
 
 #ifndef INA219_USE_POWER
-#define INA219_USE_POWER       1
+#define INA219_USE_POWER       1      /**< 1=提供 ina219_read_power() 功率 API；0=裁剪 */
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -119,7 +123,7 @@
  * INA219_ERR_VERIFY。每次写多一笔 I2C 读，量产默认关闭。 */
 
 #ifndef INA219_VERIFY_WRITES
-#define INA219_VERIFY_WRITES   0
+#define INA219_VERIFY_WRITES   0      /**< 1=写后回读校验，不一致返回 INA219_ERR_VERIFY */
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -130,7 +134,7 @@
  * 并发安全，同一实例需外部保护。单线程系统保持 0 零开销。 */
 
 #ifndef INA219_THREAD_SAFE
-#define INA219_THREAD_SAFE     0
+#define INA219_THREAD_SAFE     0      /**< 1=临界区调用 ina219_io_lock/unlock()（移植层实现） */
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -140,6 +144,10 @@
 #ifndef INA219_WAIT_POLL_MS
 #define INA219_WAIT_POLL_MS    1   /**< ina219_wait_conversion() 两次查询间隔 ms，
                                         仅 INA219_USE_TRIGGERED=1 时使用 */
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* INA219_CONF_H */

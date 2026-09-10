@@ -99,7 +99,8 @@ Invoke-Checked -Executable $armGcc -Arguments @("--version")
 Invoke-Checked -Executable $rvGcc -Arguments @("--version")
 Invoke-Checked -Executable $rvRun -Arguments @("--version")
 
-$pdfPath = Join-Path $projectRoot "AW32257.pdf"
+$datasheetRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "..\..\datasheet"))
+$pdfPath = Join-Path $datasheetRoot "AW32257.pdf"
 $expectedPdfSha256 = "845B5A4ADC89922A47A360298B52B579A6F94AE9580101600E2E9FC216294563"
 $actualPdfSha256 = (Get-FileHash -LiteralPath $pdfPath -Algorithm SHA256).Hash
 if ($actualPdfSha256 -ne $expectedPdfSha256)

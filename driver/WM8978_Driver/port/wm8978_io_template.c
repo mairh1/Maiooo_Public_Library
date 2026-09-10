@@ -1,10 +1,15 @@
-/*
+/**
  * @file    wm8978_io_template.c
  * @brief   WM8978 固定移植契约模板
  * @details 把本文件复制进板级工程并改名为 wm8978_io.c，用经平台
  *          验证的 I2C/GPIO 与延时调用替换这些桩实现。
  *          控制帧为两个字节；核心提供未移位的 WM8978 帧，物理
  *          2 线/3 线总线由板级负责。
+ * @note    本文件只依赖 wm8978_io.h 与平台外设驱动；两个桩实现
+ *          在移植完成前必须保持返回错误/空操作，避免误用。
+ * @author  Maiooo
+ * @version 1.0.0
+ * @date    2026-08-13
  *
  * SPDX-License-Identifier: WTFPL
  */

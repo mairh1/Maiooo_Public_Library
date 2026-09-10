@@ -29,6 +29,7 @@
 | 移植层 port/drv2605l_io_template.c           | 仅此处接触平台 I2C
 +---------------------------------------------+
                     |
++---------------------------------------------+
 | STM32 / CH32 / ESP32 / Linux / 模拟 I2C      |
 +---------------------------------------------+
 ~~~
@@ -40,7 +41,7 @@ RTOS 或 GPIO 类型。EN 和 IN/TRIG 不属于 I2C 契约，由板级代码管�
 
 1. 将 drv2605l.h、drv2605l.c、drv2605l_conf.h、
    drv2605l_regs.h、drv2605l_io.h 加入目标工程。
-2. 复制 port/drv2605l_io_template.c，实选四个必选函数：
+2. 复制 port/drv2605l_io_template.c，实现四个必选函数：
    drv2605l_io_init()、drv2605l_io_read_reg()、
    drv2605l_io_write_reg()、drv2605l_io_delay_ms()。
 3. 确保总线使用 7 位地址 0x5A，或在移植层转换为平台要求的地址格式。

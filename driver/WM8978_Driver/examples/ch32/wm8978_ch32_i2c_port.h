@@ -6,6 +6,10 @@
  * 的 I2C API 不同，因此由板级层提供一个带超时保护、7 位地址的写
  * 函数和一个可选的延时函数。
  *
+ * @author  Maiooo
+ * @version 1.0.0
+ * @date    2026-08-13
+ *
  * SPDX-License-Identifier: WTFPL
  */
 

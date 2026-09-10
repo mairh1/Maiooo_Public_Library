@@ -5,6 +5,8 @@
  *          - 像素缓冲由调用者提供，init 时清零，避免首次 show 送出随机色
  *          - 亮度缩放只发生在 show 发送路径，不回写像素缓冲
  *          - 发送经 io 回调完成，任何失败路径都保证 lock/unlock 成对
+ * @note    仅依赖 rgbled.h（含 rgbled_conf.h/rgbled_io.h）与 C99 固定
+ *          宽度类型头；全部 API 运行于线程上下文，禁止在 ISR 中调用。
  * @author  Maiooo
  * @version 1.1.0
  * @date    2026-08-29
@@ -18,14 +20,34 @@
  * 私有工具函数
  * ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * @brief   校验设备指针非空且实例已完成初始化。
+ * @details 各公共 API 入口统一调用，避免每个函数重复空指针与
+ *          initialized 标志两项检查。
+ * @param   dev  待检查的设备句柄，允许 NULL。
+ * @retval  RGBLED_OK             实例就绪，可以继续后续操作。
+ * @retval  RGBLED_ERR_PARAM      dev 为 NULL。
+ * @retval  RGBLED_ERR_NOT_READY  dev 尚未调用 rgbled_init() 或已 deinit。
+ */
 static rgbled_result_t rgbled_require_ready(const rgbled_dev_t *dev)
 {
-    if (dev == NULL) {
+    if (dev == NULL)
+    {
         return RGBLED_ERR_PARAM;
     }
     return dev->initialized ? RGBLED_OK : RGBLED_ERR_NOT_READY;
 }
 
+/**
+ * @brief   按比例缩放单个颜色通道（四舍五入）。
+ * @details 直接计算 value*scale/255 会向零截断，导致整体偏暗；先加
+ *          127U（约半个除数 255/2 的偏置）再除，等效四舍五入。
+ *          极值不溢出：value=scale=255 时结果恰为 255，uint16_t
+ *          中间量最大 65280+127=65407，留有余量。
+ * @param   value  原始通道值 0~255。
+ * @param   scale  缩放系数 0~255，255 表示不变，0 表示全黑。
+ * @return  缩放后的通道值 0~255。
+ */
 static uint8_t rgbled_scale_channel(uint8_t value, uint8_t scale)
 {
     return (uint8_t)(((uint16_t)value * scale + 127U) / 255U);
@@ -40,7 +62,8 @@ rgbled_result_t rgbled_init(rgbled_dev_t *dev, rgbled_color_t *pixels,
                             void *io_ctx)
 {
     if ((dev == NULL) || (pixels == NULL) || (count == 0U) ||
-        (io == NULL) || (io->write == NULL)) {
+        (io == NULL) || (io->write == NULL))
+    {
         return RGBLED_ERR_PARAM;
     }
 
@@ -63,7 +86,8 @@ rgbled_result_t rgbled_init(rgbled_dev_t *dev, rgbled_color_t *pixels,
 
 rgbled_result_t rgbled_deinit(rgbled_dev_t *dev)
 {
-    if (dev == NULL) {
+    if (dev == NULL)
+    {
         return RGBLED_ERR_PARAM;
     }
     dev->initialized = 0U;
@@ -81,10 +105,12 @@ rgbled_result_t rgbled_set_pixel(rgbled_dev_t *dev, uint16_t index,
                                  rgbled_color_t color)
 {
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
-    if (index >= dev->count) {
+    if (index >= dev->count)
+    {
         return RGBLED_ERR_PARAM;
     }
     dev->pixels[index] = color;
@@ -95,10 +121,12 @@ rgbled_result_t rgbled_get_pixel(const rgbled_dev_t *dev, uint16_t index,
                                  rgbled_color_t *color)
 {
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
-    if ((color == NULL) || (index >= dev->count)) {
+    if ((color == NULL) || (index >= dev->count))
+    {
         return RGBLED_ERR_PARAM;
     }
     *color = dev->pixels[index];
@@ -109,10 +137,12 @@ rgbled_result_t rgbled_fill(rgbled_dev_t *dev, rgbled_color_t color)
 {
     uint16_t index;
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
-    for (index = 0U; index < dev->count; ++index) {
+    for (index = 0U; index < dev->count; ++index)
+    {
         dev->pixels[index] = color;
     }
     return RGBLED_OK;
@@ -126,7 +156,8 @@ rgbled_result_t rgbled_clear(rgbled_dev_t *dev)
 rgbled_result_t rgbled_set_brightness(rgbled_dev_t *dev, uint8_t brightness)
 {
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
     dev->brightness = brightness;
@@ -137,7 +168,8 @@ rgbled_result_t rgbled_get_brightness(const rgbled_dev_t *dev,
                                        uint8_t *brightness)
 {
     rgbled_result_t result = rgbled_require_ready(dev);
-    if ((result != RGBLED_OK) || (brightness == NULL)) {
+    if ((result != RGBLED_OK) || (brightness == NULL))
+    {
         return (result == RGBLED_OK) ? RGBLED_ERR_PARAM : result;
     }
     *brightness = dev->brightness;
@@ -154,14 +186,17 @@ rgbled_result_t rgbled_show(rgbled_dev_t *dev)
     uint8_t channels[3];
     int io_result;
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
 
-    if (dev->io->lock != NULL) {
+    if (dev->io->lock != NULL)
+    {
         dev->io->lock(dev->io_ctx);
     }
-    for (index = 0U; index < dev->count; ++index) {
+    for (index = 0U; index < dev->count; ++index)
+    {
         rgbled_color_t color = rgbled_color_scale(dev->pixels[index],
                                                    dev->brightness);
 #if RGBLED_COLOR_ORDER == RGBLED_ORDER_GRB
@@ -174,25 +209,31 @@ rgbled_result_t rgbled_show(rgbled_dev_t *dev)
         channels[2] = color.b;
 #endif
         io_result = dev->io->write(dev->io_ctx, channels, 3U);
-        if (io_result != RGBLED_IO_OK) {
+        if (io_result != RGBLED_IO_OK)
+        {
             dev->last_io_error = io_result;
-            if (dev->io->unlock != NULL) {
+            if (dev->io->unlock != NULL)
+            {
                 dev->io->unlock(dev->io_ctx);
             }
             return RGBLED_ERR_IO;
         }
     }
-    if (dev->io->latch != NULL) {
+    if (dev->io->latch != NULL)
+    {
         io_result = dev->io->latch(dev->io_ctx, RGBLED_LATCH_US);
-        if (io_result != RGBLED_IO_OK) {
+        if (io_result != RGBLED_IO_OK)
+        {
             dev->last_io_error = io_result;
-            if (dev->io->unlock != NULL) {
+            if (dev->io->unlock != NULL)
+            {
                 dev->io->unlock(dev->io_ctx);
             }
             return RGBLED_ERR_IO;
         }
     }
-    if (dev->io->unlock != NULL) {
+    if (dev->io->unlock != NULL)
+    {
         dev->io->unlock(dev->io_ctx);
     }
     dev->last_io_error = RGBLED_IO_OK;
@@ -213,10 +254,12 @@ rgbled_result_t rgbled_set_effect(rgbled_dev_t *dev, rgbled_effect_fn_t effect,
                                   void *effect_ctx)
 {
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
-    if (effect == NULL) {
+    if (effect == NULL)
+    {
         return RGBLED_ERR_PARAM;
     }
     dev->effect = effect;
@@ -229,7 +272,8 @@ rgbled_result_t rgbled_set_effect(rgbled_dev_t *dev, rgbled_effect_fn_t effect,
 rgbled_result_t rgbled_stop_effect(rgbled_dev_t *dev)
 {
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
     dev->effect_enabled = 0U;
@@ -242,10 +286,12 @@ rgbled_result_t rgbled_update(rgbled_dev_t *dev, uint32_t now_ms)
 {
     uint32_t elapsed_ms;
     rgbled_result_t result = rgbled_require_ready(dev);
-    if (result != RGBLED_OK) {
+    if (result != RGBLED_OK)
+    {
         return result;
     }
-    if ((dev->effect_enabled == 0U) || (dev->effect == NULL)) {
+    if ((dev->effect_enabled == 0U) || (dev->effect == NULL))
+    {
         return RGBLED_ERR_STATE;
     }
     elapsed_ms = now_ms - dev->last_update_ms;
@@ -295,7 +341,8 @@ rgbled_color_t rgbled_color_from_hsv(rgbled_hsv_t hsv)
                            (255U - ((uint16_t)hsv.s * remainder >> 8U))) >> 8U);
     uint8_t t = (uint8_t)(((uint16_t)hsv.v *
                            (255U - ((uint16_t)hsv.s * (255U - remainder) >> 8U))) >> 8U);
-    switch (region) {
+    switch (region)
+    {
     case 0U: return rgbled_color(hsv.v, t, p);
     case 1U: return rgbled_color(q, hsv.v, p);
     case 2U: return rgbled_color(p, hsv.v, t);

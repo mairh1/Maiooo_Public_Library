@@ -1,17 +1,27 @@
 /**
  * @file    wm8978.c
  * @brief   WM8978 可移植 C99 驱动实现
- * @author  Maiooo
- * @version 1.0.0
- * @date    2026-08-13
+ * @details 实现要点：
+ *          - 以静态常量表维护 52 个有效寄存器地址白名单、数据手册
+ *            复位默认值、可写位掩码与非锁存触发位（VU/UPDATE/NFU）
+ *            掩码，写式控制接口所必需的软件影子缓存由实例携带；
+ *          - 控制帧成功发送后才提交影子；任何端口错误都会把实例
+ *            锁定为 DESYNCHRONIZED，防止继续使用可能失真的影子；
+ *          - 拒绝保留位偏离复位值，并在任意 ADC/DAC 使能时拒绝
+ *            切换 R18 EQ3DMODE，避免硅片拒位导致影子失真。
+ * @note    仅依赖自身头文件与 <stddef.h>；驱动不可重入，不在
+ *          中断上下文执行。
  *
  * SPDX-License-Identifier: WTFPL
  */
 
 #include "wm8978.h"
+#include "wm8978_conf.h"
 #include "wm8978_io.h"
 
 #include <stddef.h>
+
+/* ══════════════════════════ 私有常量表 ══════════════════════════ */
 
 static const uint8_t wm8978_valid_registers[WM8978_REGISTER_SPACE_SIZE] =
 {
@@ -201,7 +211,17 @@ static const uint16_t wm8978_transient_masks[WM8978_REGISTER_SPACE_SIZE] =
     [WM8978_REG_RIGHT_SPEAKER_VOLUME] = 0x100U
 };
 
-static wm8978_status_t wm8978_require_bound(const wm8978_t * device)
+/* ══════════════════════════ 私有辅助函数 ══════════════════════════ */
+
+/**
+ * @brief   校验实例已绑定。
+ * @param   device 驱动实例。
+ * @retval  WM8978_OK 实例处于任一已绑定生命周期。
+ * @retval  WM8978_ERR_NULL_POINTER device 为 NULL。
+ * @retval  WM8978_ERR_NOT_BOUND 实例尚未绑定。
+ */
+static wm8978_status_t
+wm8978_require_bound(const wm8978_t * device)
 {
     if (device == NULL)
     {
@@ -218,7 +238,17 @@ static wm8978_status_t wm8978_require_bound(const wm8978_t * device)
     return WM8978_OK;
 }
 
-static wm8978_status_t wm8978_require_ready(const wm8978_t * device)
+/**
+ * @brief   校验实例已绑定且影子与芯片同步。
+ * @param   device 驱动实例。
+ * @retval  WM8978_OK 实例处于 READY 生命周期。
+ * @retval  WM8978_ERR_NULL_POINTER device 为 NULL。
+ * @retval  WM8978_ERR_NOT_BOUND 实例尚未绑定。
+ * @retval  WM8978_ERR_DESYNCHRONIZED 实例失步，须复位恢复。
+ * @retval  WM8978_ERR_NOT_READY 已绑定但未完成复位同步。
+ */
+static wm8978_status_t
+wm8978_require_ready(const wm8978_t * device)
 {
     wm8978_status_t status;
 
@@ -241,7 +271,12 @@ static wm8978_status_t wm8978_require_ready(const wm8978_t * device)
     return WM8978_OK;
 }
 
-static void wm8978_load_reset_defaults(wm8978_t * device)
+/**
+ * @brief   把影子整体装载为数据手册复位默认值并进入 READY。
+ * @param   device 驱动实例（须已绑定）。
+ */
+static void
+wm8978_load_reset_defaults(wm8978_t * device)
 {
     uint8_t address;
 
@@ -252,9 +287,21 @@ static void wm8978_load_reset_defaults(wm8978_t * device)
     device->lifecycle = WM8978_LIFECYCLE_READY;
 }
 
-static wm8978_status_t wm8978_send_control(wm8978_t * device,
-                                            uint8_t register_address,
-                                            uint16_t value)
+/**
+ * @brief   打包并发送一个控制帧，失败时把实例锁定为失步。
+ * @param   device 驱动实例。
+ * @param   register_address 寄存器地址。
+ * @param   value 9 位寄存器值。
+ * @retval  WM8978_OK 控制帧发送成功。
+ * @retval  WM8978_ERR_INVALID_REGISTER 地址无效。
+ * @retval  WM8978_ERR_RANGE value 超出 9 位。
+ * @retval  WM8978_ERR_IO io 层返回非零（实例进入 DESYNCHRONIZED，
+ *          原始错误记录在 last_port_error）。
+ */
+static wm8978_status_t
+wm8978_send_control(wm8978_t * device,
+                    uint8_t register_address,
+                    uint16_t value)
 {
     wm8978_status_t status;
     int32_t port_status;
@@ -280,7 +327,17 @@ static wm8978_status_t wm8978_send_control(wm8978_t * device,
     return WM8978_OK;
 }
 
-static wm8978_status_t wm8978_validate_complete_value(
+/**
+ * @brief   校验完整寄存器值：地址有效、不超 9 位、保留位等于复位值。
+ * @param   register_address 寄存器地址。
+ * @param   value 待校验的完整寄存器值。
+ * @retval  WM8978_OK 校验通过。
+ * @retval  WM8978_ERR_INVALID_REGISTER 地址无效。
+ * @retval  WM8978_ERR_RANGE value 超出 9 位。
+ * @retval  WM8978_ERR_RESERVED_BITS 保留位偏离复位值。
+ */
+static wm8978_status_t
+wm8978_validate_complete_value(
     uint8_t register_address,
     uint16_t value)
 {
@@ -307,9 +364,21 @@ static wm8978_status_t wm8978_validate_complete_value(
     return WM8978_OK;
 }
 
-static wm8978_status_t wm8978_write_and_commit(wm8978_t * device,
-                                                uint8_t register_address,
-                                                uint16_t wire_value)
+/**
+ * @brief   提交一次写入：EQ3DMODE 状态检查、发送控制帧并更新影子。
+ * @details 发送成功后按非锁存触发位掩码清除影子中的 VU/UPDATE/NFU
+ *          位，使影子只保留可锁存的值。
+ * @param   device 驱动实例（须处于 READY）。
+ * @param   register_address 寄存器地址。
+ * @param   wire_value 发送到总线的完整 9 位值。
+ * @retval  WM8978_OK 写入成功且影子已提交。
+ * @retval  WM8978_ERR_STATE 在 ADC/DAC 使能时改变 R18 EQ3DMODE。
+ * @retval  WM8978_ERR_IO 控制帧发送失败（实例失步）。
+ */
+static wm8978_status_t
+wm8978_write_and_commit(wm8978_t * device,
+                        uint8_t register_address,
+                        uint16_t wire_value)
 {
     wm8978_status_t status;
 
@@ -335,12 +404,26 @@ static wm8978_status_t wm8978_write_and_commit(wm8978_t * device,
     return WM8978_OK;
 }
 
-static wm8978_status_t wm8978_write_stereo_update(wm8978_t * device,
-                                                   uint8_t left_register,
-                                                   uint8_t right_register,
-                                                   uint16_t left_value,
-                                                   uint16_t right_value,
-                                                   uint16_t update_bit)
+/**
+ * @brief   同步更新立体声寄存器对：先写左声道（触发位清 0），再写
+ *          右声道（触发位置 1）使左右同时生效。
+ * @param   device 驱动实例。
+ * @param   left_register 左声道寄存器地址。
+ * @param   right_register 右声道寄存器地址。
+ * @param   left_value 左声道寄存器值（触发位清 0）。
+ * @param   right_value 右声道寄存器值（触发位置 1）。
+ * @param   update_bit 该寄存器对的非锁存触发位。
+ * @retval  WM8978_OK 两帧都成功。
+ * @retval  WM8978_ERR_IO 第二帧失败时左声道可能已更新（实例失步）。
+ * @retval  其余同 wm8978_write_register() 的校验结果。
+ */
+static wm8978_status_t
+wm8978_write_stereo_update(wm8978_t * device,
+                           uint8_t left_register,
+                           uint8_t right_register,
+                           uint16_t left_value,
+                           uint16_t right_value,
+                           uint16_t update_bit)
 {
     wm8978_status_t status;
 
@@ -358,9 +441,15 @@ static wm8978_status_t wm8978_write_stereo_update(wm8978_t * device,
                                   (uint16_t)(right_value | update_bit));
 }
 
-wm8978_status_t wm8978_bind(wm8978_t * device,
-                             void * io_ctx,
-                             uint32_t io_timeout_ms)
+/* ══════════════════════════ 公共 API ══════════════════════════ */
+
+/**
+ * @brief 见 wm8978.h 中 wm8978_bind() 的完整契约。
+ */
+wm8978_status_t
+wm8978_bind(wm8978_t * device,
+            void * io_ctx,
+            uint32_t io_timeout_ms)
 {
     uint8_t address;
 
@@ -386,7 +475,11 @@ wm8978_status_t wm8978_bind(wm8978_t * device,
     return WM8978_OK;
 }
 
-wm8978_status_t wm8978_assume_power_on_reset(wm8978_t * device)
+/**
+ * @brief 见 wm8978.h 中 wm8978_assume_power_on_reset() 的完整契约。
+ */
+wm8978_status_t
+wm8978_assume_power_on_reset(wm8978_t * device)
 {
     wm8978_status_t status;
 
@@ -400,7 +493,11 @@ wm8978_status_t wm8978_assume_power_on_reset(wm8978_t * device)
     return WM8978_OK;
 }
 
-wm8978_status_t wm8978_soft_reset(wm8978_t * device)
+/**
+ * @brief 见 wm8978.h 中 wm8978_soft_reset() 的完整契约。
+ */
+wm8978_status_t
+wm8978_soft_reset(wm8978_t * device)
 {
     wm8978_status_t status;
 
@@ -420,7 +517,11 @@ wm8978_status_t wm8978_soft_reset(wm8978_t * device)
     return WM8978_OK;
 }
 
-wm8978_lifecycle_t wm8978_get_lifecycle(const wm8978_t * device)
+/**
+ * @brief 见 wm8978.h 中 wm8978_get_lifecycle() 的完整契约。
+ */
+wm8978_lifecycle_t
+wm8978_get_lifecycle(const wm8978_t * device)
 {
     if (device == NULL)
     {
@@ -430,7 +531,11 @@ wm8978_lifecycle_t wm8978_get_lifecycle(const wm8978_t * device)
     return device->lifecycle;
 }
 
-int32_t wm8978_get_last_port_error(const wm8978_t * device)
+/**
+ * @brief 见 wm8978.h 中 wm8978_get_last_port_error() 的完整契约。
+ */
+int32_t
+wm8978_get_last_port_error(const wm8978_t * device)
 {
     if (device == NULL)
     {
@@ -440,15 +545,23 @@ int32_t wm8978_get_last_port_error(const wm8978_t * device)
     return device->last_port_error;
 }
 
-bool wm8978_register_is_valid(uint8_t register_address)
+/**
+ * @brief 见 wm8978.h 中 wm8978_register_is_valid() 的完整契约。
+ */
+bool
+wm8978_register_is_valid(uint8_t register_address)
 {
     return (register_address < WM8978_REGISTER_SPACE_SIZE) &&
            (wm8978_valid_registers[register_address] != 0U);
 }
 
-wm8978_status_t wm8978_pack_control_frame(uint8_t register_address,
-                                           uint16_t value,
-                                           uint8_t frame[2])
+/**
+ * @brief 见 wm8978.h 中 wm8978_pack_control_frame() 的完整契约。
+ */
+wm8978_status_t
+wm8978_pack_control_frame(uint8_t register_address,
+                          uint16_t value,
+                          uint8_t frame[2])
 {
     if (frame == NULL)
     {
@@ -471,9 +584,13 @@ wm8978_status_t wm8978_pack_control_frame(uint8_t register_address,
     return WM8978_OK;
 }
 
-wm8978_status_t wm8978_get_shadow_register(const wm8978_t * device,
-                                             uint8_t register_address,
-                                             uint16_t * value)
+/**
+ * @brief 见 wm8978.h 中 wm8978_get_shadow_register() 的完整契约。
+ */
+wm8978_status_t
+wm8978_get_shadow_register(const wm8978_t * device,
+                           uint8_t register_address,
+                           uint16_t * value)
 {
     wm8978_status_t status;
 
@@ -502,9 +619,13 @@ wm8978_status_t wm8978_get_shadow_register(const wm8978_t * device,
     return WM8978_OK;
 }
 
-wm8978_status_t wm8978_write_register(wm8978_t * device,
-                                       uint8_t register_address,
-                                       uint16_t value)
+/**
+ * @brief 见 wm8978.h 中 wm8978_write_register() 的完整契约。
+ */
+wm8978_status_t
+wm8978_write_register(wm8978_t * device,
+                      uint8_t register_address,
+                      uint16_t value)
 {
     wm8978_status_t status;
 
@@ -539,10 +660,14 @@ wm8978_status_t wm8978_write_register(wm8978_t * device,
     return wm8978_write_and_commit(device, register_address, value);
 }
 
-wm8978_status_t wm8978_update_bits(wm8978_t * device,
-                                    uint8_t register_address,
-                                    uint16_t mask,
-                                    uint16_t field_value)
+/**
+ * @brief 见 wm8978.h 中 wm8978_update_bits() 的完整契约。
+ */
+wm8978_status_t
+wm8978_update_bits(wm8978_t * device,
+                   uint8_t register_address,
+                   uint16_t mask,
+                   uint16_t field_value)
 {
     wm8978_status_t status;
     uint16_t old_value;
@@ -587,7 +712,11 @@ wm8978_status_t wm8978_update_bits(wm8978_t * device,
     return wm8978_write_and_commit(device, register_address, wire_value);
 }
 
-wm8978_status_t wm8978_configure_audio_interface(
+/**
+ * @brief 见 wm8978.h 中 wm8978_configure_audio_interface() 的完整契约。
+ */
+wm8978_status_t
+wm8978_configure_audio_interface(
     wm8978_t * device,
     const wm8978_audio_interface_config_t * config)
 {
@@ -637,7 +766,11 @@ wm8978_status_t wm8978_configure_audio_interface(
     return wm8978_write_register(device, WM8978_REG_AUDIO_INTERFACE, value);
 }
 
-wm8978_status_t wm8978_configure_clock(
+/**
+ * @brief 见 wm8978.h 中 wm8978_configure_clock() 的完整契约。
+ */
+wm8978_status_t
+wm8978_configure_clock(
     wm8978_t * device,
     const wm8978_clock_config_t * config)
 {
@@ -692,7 +825,11 @@ wm8978_status_t wm8978_configure_clock(
                                value);
 }
 
-wm8978_status_t wm8978_set_filter_sample_rate(
+/**
+ * @brief 见 wm8978.h 中 wm8978_set_filter_sample_rate() 的完整契约。
+ */
+wm8978_status_t
+wm8978_set_filter_sample_rate(
     wm8978_t * device,
     wm8978_filter_sample_rate_t sample_rate_group)
 {
@@ -713,8 +850,12 @@ wm8978_status_t wm8978_set_filter_sample_rate(
                                value);
 }
 
-wm8978_status_t wm8978_configure_pll(wm8978_t * device,
-                                      const wm8978_pll_config_t * config)
+/**
+ * @brief 见 wm8978.h 中 wm8978_configure_pll() 的完整契约。
+ */
+wm8978_status_t
+wm8978_configure_pll(wm8978_t * device,
+                     const wm8978_pll_config_t * config)
 {
     wm8978_status_t status;
     uint16_t value;
@@ -770,7 +911,11 @@ wm8978_status_t wm8978_configure_pll(wm8978_t * device,
     return wm8978_write_register(device, WM8978_REG_PLL_N, value);
 }
 
-wm8978_status_t wm8978_set_pll_enabled(wm8978_t * device, bool enabled)
+/**
+ * @brief 见 wm8978.h 中 wm8978_set_pll_enabled() 的完整契约。
+ */
+wm8978_status_t
+wm8978_set_pll_enabled(wm8978_t * device, bool enabled)
 {
     wm8978_status_t status;
     uint16_t source;
@@ -805,9 +950,13 @@ wm8978_status_t wm8978_set_pll_enabled(wm8978_t * device, bool enabled)
                                enabled ? WM8978_R01_PLLEN : 0U);
 }
 
-wm8978_status_t wm8978_set_dac_digital_volume(wm8978_t * device,
-                                               uint8_t left_code,
-                                               uint8_t right_code)
+/**
+ * @brief 见 wm8978.h 中 wm8978_set_dac_digital_volume() 的完整契约。
+ */
+wm8978_status_t
+wm8978_set_dac_digital_volume(wm8978_t * device,
+                              uint8_t left_code,
+                              uint8_t right_code)
 {
     return wm8978_write_stereo_update(device,
                                        WM8978_REG_LEFT_DAC_VOLUME,
@@ -817,9 +966,13 @@ wm8978_status_t wm8978_set_dac_digital_volume(wm8978_t * device,
                                        WM8978_CONVERTER_VU);
 }
 
-wm8978_status_t wm8978_set_adc_digital_volume(wm8978_t * device,
-                                               uint8_t left_code,
-                                               uint8_t right_code)
+/**
+ * @brief 见 wm8978.h 中 wm8978_set_adc_digital_volume() 的完整契约。
+ */
+wm8978_status_t
+wm8978_set_adc_digital_volume(wm8978_t * device,
+                              uint8_t left_code,
+                              uint8_t right_code)
 {
     return wm8978_write_stereo_update(device,
                                        WM8978_REG_LEFT_ADC_VOLUME,
@@ -829,7 +982,11 @@ wm8978_status_t wm8978_set_adc_digital_volume(wm8978_t * device,
                                        WM8978_CONVERTER_VU);
 }
 
-wm8978_status_t wm8978_set_input_pga(
+/**
+ * @brief 见 wm8978.h 中 wm8978_set_input_pga() 的完整契约。
+ */
+wm8978_status_t
+wm8978_set_input_pga(
     wm8978_t * device,
     const wm8978_input_pga_config_t * config)
 {
@@ -868,7 +1025,11 @@ wm8978_status_t wm8978_set_input_pga(
                                        WM8978_INPUT_PGA_UPDATE);
 }
 
-wm8978_status_t wm8978_set_output_volume(
+/**
+ * @brief 见 wm8978.h 中 wm8978_set_output_volume() 的完整契约。
+ */
+wm8978_status_t
+wm8978_set_output_volume(
     wm8978_t * device,
     wm8978_output_pair_t output,
     const wm8978_output_volume_config_t * config)
@@ -924,7 +1085,11 @@ wm8978_status_t wm8978_set_output_volume(
                                        WM8978_OUTPUT_VU);
 }
 
-wm8978_status_t wm8978_mute_analogue_outputs(wm8978_t * device, bool mute)
+/**
+ * @brief 见 wm8978.h 中 wm8978_mute_analogue_outputs() 的完整契约。
+ */
+wm8978_status_t
+wm8978_mute_analogue_outputs(wm8978_t * device, bool mute)
 {
     wm8978_status_t status;
     uint16_t left_value;
@@ -1002,9 +1167,13 @@ wm8978_status_t wm8978_mute_analogue_outputs(wm8978_t * device, bool mute)
     return wm8978_write_register(device, WM8978_REG_OUT4_MIXER, value);
 }
 
-wm8978_status_t wm8978_power_up_nonboost_out1(wm8978_t * device,
-                                               wm8978_vmid_t vmid,
-                                               uint32_t vmid_settle_ms)
+/**
+ * @brief 见 wm8978.h 中 wm8978_power_up_nonboost_out1() 的完整契约。
+ */
+wm8978_status_t
+wm8978_power_up_nonboost_out1(wm8978_t * device,
+                              wm8978_vmid_t vmid,
+                              uint32_t vmid_settle_ms)
 {
     wm8978_status_t status;
     uint16_t value;
@@ -1086,7 +1255,11 @@ wm8978_status_t wm8978_power_up_nonboost_out1(wm8978_t * device,
                                   value);
 }
 
-wm8978_status_t wm8978_power_down(wm8978_t * device)
+/**
+ * @brief 见 wm8978.h 中 wm8978_power_down() 的完整契约。
+ */
+wm8978_status_t
+wm8978_power_down(wm8978_t * device)
 {
     wm8978_status_t status;
 

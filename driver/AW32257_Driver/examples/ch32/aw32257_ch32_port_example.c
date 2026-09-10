@@ -10,13 +10,16 @@
 
 #include "aw32257_ch32_port_example.h"
 
+#include "aw32257_io.h"
+
 #include <stddef.h>
 
-int32_t aw32257_io_read_reg(void * io_ctx,
-                            uint8_t address_7bit,
-                            uint8_t register_address,
-                            uint8_t * value,
-                            uint32_t timeout_ms)
+int32_t
+aw32257_io_read_reg(void * io_ctx,
+                    uint8_t address_7bit,
+                    uint8_t register_address,
+                    uint8_t * value,
+                    uint32_t timeout_ms)
 {
     aw32257_ch32_port_context_t * port_context;
 
@@ -37,11 +40,12 @@ int32_t aw32257_io_read_reg(void * io_ctx,
                                             timeout_ms);
 }
 
-int32_t aw32257_io_write_reg(void * io_ctx,
-                             uint8_t address_7bit,
-                             uint8_t register_address,
-                             uint8_t value,
-                             uint32_t timeout_ms)
+int32_t
+aw32257_io_write_reg(void * io_ctx,
+                     uint8_t address_7bit,
+                     uint8_t register_address,
+                     uint8_t value,
+                     uint32_t timeout_ms)
 {
     aw32257_ch32_port_context_t * port_context;
 
@@ -61,7 +65,8 @@ int32_t aw32257_io_write_reg(void * io_ctx,
                                              timeout_ms);
 }
 
-void aw32257_io_delay_ms(void * io_ctx, uint32_t milliseconds)
+void
+aw32257_io_delay_ms(void * io_ctx, uint32_t milliseconds)
 {
     aw32257_ch32_port_context_t * port_context;
 
@@ -72,11 +77,12 @@ void aw32257_io_delay_ms(void * io_ctx, uint32_t milliseconds)
     }
 }
 
-aw32257_status_t aw32257_ch32_init(aw32257_t * device,
-                                   aw32257_ch32_port_context_t * port_context,
-                                   uint32_t io_timeout_ms,
-                                   const aw32257_safety_config_t * safety,
-                                   aw32257_device_info_t * device_info)
+aw32257_status_t
+aw32257_ch32_init(aw32257_t * device,
+                  aw32257_ch32_port_context_t * port_context,
+                  uint32_t io_timeout_ms,
+                  const aw32257_safety_config_t * safety,
+                  aw32257_device_info_t * device_info)
 {
     if ((device == NULL) || (port_context == NULL))
     {

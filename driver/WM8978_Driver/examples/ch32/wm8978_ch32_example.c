@@ -6,6 +6,10 @@
  * 48 kHz 用 12.288 MHz）、配置音频外设与 DMA、在 codec 启动期间
  * 保持 DACDAT 为零，并在解除耳机静音前启动数据流。
  *
+ * @author  Maiooo
+ * @version 1.0.0
+ * @date    2026-08-13
+ *
  * SPDX-License-Identifier: WTFPL
  */
 

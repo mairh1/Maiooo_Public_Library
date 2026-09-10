@@ -110,13 +110,7 @@ static void mock_load_por(void)
 
 static void mock_reset(void)
 {
-    uint8_t i;
-
     mock_load_por();
-    for (i = 0u; i < MOCK_REG_SPACE; i++)
-    {
-        (void)i;   /* 寄存器已在 mock_load_por 覆盖 */
-    }
     s_bus.log_count = 0u;
     s_bus.total_writes = 0u;
     s_bus.total_reads = 0u;

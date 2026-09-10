@@ -3,6 +3,8 @@
  * @brief   RGB 灯库内置参考特效
  * @details 特效只改写像素缓冲，不触发发送；应用每帧调用
  *          rgbled_update() 后需自行调用 rgbled_show()。
+ * @note    仅在 RGBLED_ENABLE_EFFECTS=1 时参与编译；特效实现只依赖
+ *          rgbled.h 公共 API，可在同签名约束下自行扩展。
  * @author  Maiooo
  * @version 1.1.0
  * @date    2026-08-29
@@ -16,10 +18,19 @@
  * 私有工具函数
  * ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * @brief   计算呼吸特效在当前时刻的亮度系数。
+ * @details 以 2000ms 为周期的三角波：前 1000ms 相位线性上升到 255，
+ *          后 1000ms 线性回落到 0，相位取自 now_ms 对 2000 取模，
+ *          因此不依赖帧间隔、跳帧也不会破坏波形。
+ * @param   now_ms  当前时基（毫秒）。
+ * @return  亮度系数 0~255。
+ */
 static uint8_t rgbled_effect_wave(uint32_t now_ms)
 {
     uint16_t phase = (uint16_t)(now_ms % 2000U);
-    if (phase < 1000U) {
+    if (phase < 1000U)
+    {
         return (uint8_t)((phase * 255U) / 1000U);
     }
     return (uint8_t)(((2000U - phase) * 255U) / 1000U);
@@ -35,7 +46,8 @@ rgbled_result_t rgbled_effect_static(rgbled_dev_t *dev, uint32_t now_ms,
     const rgbled_color_t *color = (const rgbled_color_t *)effect_ctx;
     (void)now_ms;
     (void)elapsed_ms;
-    if (color == NULL) {
+    if (color == NULL)
+    {
         return RGBLED_ERR_PARAM;
     }
     return rgbled_fill(dev, *color);
@@ -46,7 +58,8 @@ rgbled_result_t rgbled_effect_breathe(rgbled_dev_t *dev, uint32_t now_ms,
 {
     const rgbled_color_t *color = (const rgbled_color_t *)effect_ctx;
     (void)elapsed_ms;
-    if (color == NULL) {
+    if (color == NULL)
+    {
         return RGBLED_ERR_PARAM;
     }
     return rgbled_fill(dev, rgbled_color_scale(*color,
@@ -63,18 +76,21 @@ rgbled_result_t rgbled_effect_rainbow(rgbled_dev_t *dev, uint32_t now_ms,
 #endif
     (void)elapsed_ms;
     (void)effect_ctx;
-    if (dev == NULL) {
+    if (dev == NULL)
+    {
         return RGBLED_ERR_PARAM;
     }
 #if RGBLED_ENABLE_HSV
     offset = (uint8_t)((now_ms / 20U) & 0xFFU);
-    for (index = 0U; index < dev->count; ++index) {
+    for (index = 0U; index < dev->count; ++index)
+    {
         rgbled_hsv_t hsv;
         hsv.h = (uint8_t)(offset + (uint8_t)((index * 256U) / dev->count));
         hsv.s = 255U;
         hsv.v = 255U;
         result = rgbled_set_pixel(dev, index, rgbled_color_from_hsv(hsv));
-        if (result != RGBLED_OK) {
+        if (result != RGBLED_OK)
+        {
             return result;
         }
     }

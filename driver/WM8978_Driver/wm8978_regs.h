@@ -1,11 +1,10 @@
 /**
  * @file    wm8978_regs.h
  * @brief   WM8978 寄存器地址、字段与复位值
- * @author  Maiooo
- * @version 1.0.0
- * @date    2026-08-13
- *
- * 数值取自 WM8978 Production Data, Rev 4.5, October 2011。
+ * @details 控制接口常量、52 个有效寄存器地址（手册 Table 69）、
+ *          各寄存器复位值与位域掩码/移位，供驱动核心与原始寄存器
+ *          访问（wm8978_update_bits 等）组合使用。
+ * @note    数值取自 WM8978 Production Data, Rev 4.5, October 2011。
  *
  * SPDX-License-Identifier: WTFPL
  */
@@ -16,71 +15,71 @@
 #include <stdint.h>
 
 /* 控制接口常量。 */
-#define WM8978_I2C_ADDRESS_7BIT                 ((uint8_t)0x1AU)
-#define WM8978_I2C_WRITE_ADDRESS_8BIT           ((uint8_t)0x34U)
-#define WM8978_CONTROL_2WIRE_MAX_SCLK_HZ        ((uint32_t)526000UL)
-#define WM8978_REGISTER_VALUE_MASK              ((uint16_t)0x01FFU)
-#define WM8978_REGISTER_SPACE_SIZE              ((uint8_t)58U)
-#define WM8978_IMPLEMENTED_REGISTER_COUNT       ((uint8_t)52U)
+#define WM8978_I2C_ADDRESS_7BIT                 ((uint8_t)0x1AU) /**< 2 线模式固定 7 位器件地址（未左移） */
+#define WM8978_I2C_WRITE_ADDRESS_8BIT           ((uint8_t)0x34U) /**< 线上写地址字节（7 位地址左移 1 位后按 SDK 要求选用） */
+#define WM8978_CONTROL_2WIRE_MAX_SCLK_HZ        ((uint32_t)526000UL) /**< 2 线控制接口数据手册最大时钟（Hz）；工程建议 100/400 kHz */
+#define WM8978_REGISTER_VALUE_MASK              ((uint16_t)0x01FFU) /**< 控制字数据域掩码（B8:B0，共 9 位） */
+#define WM8978_REGISTER_SPACE_SIZE              ((uint8_t)58U) /**< 寄存器地址空间大小（R0..R57，含保留空洞） */
+#define WM8978_IMPLEMENTED_REGISTER_COUNT       ((uint8_t)52U) /**< 数据手册 Table 69 中已实现的寄存器数量 */
 
 #define WM8978_FIELD_PREP(mask, shift, value) \
-    ((uint16_t)((((uint16_t)(value)) << (shift)) & (uint16_t)(mask)))
+    ((uint16_t)((((uint16_t)(value)) << (shift)) & (uint16_t)(mask))) /**< 按掩码与移位打包字段值 */
 #define WM8978_FIELD_GET(mask, shift, value) \
-    ((uint16_t)((((uint16_t)(value)) & (uint16_t)(mask)) >> (shift)))
+    ((uint16_t)((((uint16_t)(value)) & (uint16_t)(mask)) >> (shift))) /**< 从寄存器值中按掩码与移位提取字段 */
 
 /* 表 69 中已实现的寄存器地址。空缺为保留。 */
-#define WM8978_REG_SOFTWARE_RESET               ((uint8_t)0x00U)
-#define WM8978_REG_POWER_MANAGEMENT_1           ((uint8_t)0x01U)
-#define WM8978_REG_POWER_MANAGEMENT_2           ((uint8_t)0x02U)
-#define WM8978_REG_POWER_MANAGEMENT_3           ((uint8_t)0x03U)
-#define WM8978_REG_AUDIO_INTERFACE              ((uint8_t)0x04U)
-#define WM8978_REG_COMPANDING_CONTROL            ((uint8_t)0x05U)
-#define WM8978_REG_CLOCK_GENERATION              ((uint8_t)0x06U)
-#define WM8978_REG_ADDITIONAL_CONTROL            ((uint8_t)0x07U)
-#define WM8978_REG_GPIO                          ((uint8_t)0x08U)
-#define WM8978_REG_JACK_DETECT_1                 ((uint8_t)0x09U)
-#define WM8978_REG_DAC_CONTROL                   ((uint8_t)0x0AU)
-#define WM8978_REG_LEFT_DAC_VOLUME               ((uint8_t)0x0BU)
-#define WM8978_REG_RIGHT_DAC_VOLUME              ((uint8_t)0x0CU)
-#define WM8978_REG_JACK_DETECT_2                 ((uint8_t)0x0DU)
-#define WM8978_REG_ADC_CONTROL                   ((uint8_t)0x0EU)
-#define WM8978_REG_LEFT_ADC_VOLUME               ((uint8_t)0x0FU)
-#define WM8978_REG_RIGHT_ADC_VOLUME              ((uint8_t)0x10U)
-#define WM8978_REG_EQ1                           ((uint8_t)0x12U)
-#define WM8978_REG_EQ2                           ((uint8_t)0x13U)
-#define WM8978_REG_EQ3                           ((uint8_t)0x14U)
-#define WM8978_REG_EQ4                           ((uint8_t)0x15U)
-#define WM8978_REG_EQ5                           ((uint8_t)0x16U)
-#define WM8978_REG_DAC_LIMITER_1                 ((uint8_t)0x18U)
-#define WM8978_REG_DAC_LIMITER_2                 ((uint8_t)0x19U)
-#define WM8978_REG_NOTCH_FILTER_1                ((uint8_t)0x1BU)
-#define WM8978_REG_NOTCH_FILTER_2                ((uint8_t)0x1CU)
-#define WM8978_REG_NOTCH_FILTER_3                ((uint8_t)0x1DU)
-#define WM8978_REG_NOTCH_FILTER_4                ((uint8_t)0x1EU)
-#define WM8978_REG_ALC_CONTROL_1                 ((uint8_t)0x20U)
-#define WM8978_REG_ALC_CONTROL_2                 ((uint8_t)0x21U)
-#define WM8978_REG_ALC_CONTROL_3                 ((uint8_t)0x22U)
-#define WM8978_REG_NOISE_GATE                    ((uint8_t)0x23U)
-#define WM8978_REG_PLL_N                         ((uint8_t)0x24U)
-#define WM8978_REG_PLL_K1                        ((uint8_t)0x25U)
-#define WM8978_REG_PLL_K2                        ((uint8_t)0x26U)
-#define WM8978_REG_PLL_K3                        ((uint8_t)0x27U)
-#define WM8978_REG_3D_CONTROL                    ((uint8_t)0x29U)
-#define WM8978_REG_BEEP_CONTROL                  ((uint8_t)0x2BU)
-#define WM8978_REG_INPUT_CONTROL                 ((uint8_t)0x2CU)
-#define WM8978_REG_LEFT_INPUT_PGA                ((uint8_t)0x2DU)
-#define WM8978_REG_RIGHT_INPUT_PGA               ((uint8_t)0x2EU)
-#define WM8978_REG_LEFT_ADC_BOOST                ((uint8_t)0x2FU)
-#define WM8978_REG_RIGHT_ADC_BOOST               ((uint8_t)0x30U)
-#define WM8978_REG_OUTPUT_CONTROL                ((uint8_t)0x31U)
-#define WM8978_REG_LEFT_MIXER                    ((uint8_t)0x32U)
-#define WM8978_REG_RIGHT_MIXER                   ((uint8_t)0x33U)
-#define WM8978_REG_LEFT_HEADPHONE_VOLUME         ((uint8_t)0x34U)
-#define WM8978_REG_RIGHT_HEADPHONE_VOLUME        ((uint8_t)0x35U)
-#define WM8978_REG_LEFT_SPEAKER_VOLUME           ((uint8_t)0x36U)
-#define WM8978_REG_RIGHT_SPEAKER_VOLUME          ((uint8_t)0x37U)
-#define WM8978_REG_OUT3_MIXER                    ((uint8_t)0x38U)
-#define WM8978_REG_OUT4_MIXER                    ((uint8_t)0x39U)
+#define WM8978_REG_SOFTWARE_RESET               ((uint8_t)0x00U) /**< R0 软件复位：写入任意值触发复位并重载影子 */
+#define WM8978_REG_POWER_MANAGEMENT_1           ((uint8_t)0x01U) /**< R1 电源管理 1 */
+#define WM8978_REG_POWER_MANAGEMENT_2           ((uint8_t)0x02U) /**< R2 电源管理 2 */
+#define WM8978_REG_POWER_MANAGEMENT_3           ((uint8_t)0x03U) /**< R3 电源管理 3 */
+#define WM8978_REG_AUDIO_INTERFACE              ((uint8_t)0x04U) /**< R4 数字音频接口 */
+#define WM8978_REG_COMPANDING_CONTROL            ((uint8_t)0x05U) /**< R5 压扩与回环控制 */
+#define WM8978_REG_CLOCK_GENERATION              ((uint8_t)0x06U) /**< R6 时钟生成（时钟源与分频） */
+#define WM8978_REG_ADDITIONAL_CONTROL            ((uint8_t)0x07U) /**< R7 附加控制（滤波器采样率系数、过零时钟） */
+#define WM8978_REG_GPIO                          ((uint8_t)0x08U) /**< R8 GPIO1 与 OPCLK 分频 */
+#define WM8978_REG_JACK_DETECT_1                 ((uint8_t)0x09U) /**< R9 插入检测(Jack detect) 1 */
+#define WM8978_REG_DAC_CONTROL                   ((uint8_t)0x0AU) /**< R10 DAC 控制 */
+#define WM8978_REG_LEFT_DAC_VOLUME               ((uint8_t)0x0BU) /**< R11 左声道 DAC 数字音量 */
+#define WM8978_REG_RIGHT_DAC_VOLUME              ((uint8_t)0x0CU) /**< R12 右声道 DAC 数字音量 */
+#define WM8978_REG_JACK_DETECT_2                 ((uint8_t)0x0DU) /**< R13 插入检测(Jack detect) 2 */
+#define WM8978_REG_ADC_CONTROL                   ((uint8_t)0x0EU) /**< R14 ADC 控制 */
+#define WM8978_REG_LEFT_ADC_VOLUME               ((uint8_t)0x0FU) /**< R15 左声道 ADC 数字音量 */
+#define WM8978_REG_RIGHT_ADC_VOLUME              ((uint8_t)0x10U) /**< R16 右声道 ADC 数字音量 */
+#define WM8978_REG_EQ1                           ((uint8_t)0x12U) /**< R18 五段均衡器第 1 段（含 EQ3DMODE） */
+#define WM8978_REG_EQ2                           ((uint8_t)0x13U) /**< R19 五段均衡器第 2 段 */
+#define WM8978_REG_EQ3                           ((uint8_t)0x14U) /**< R20 五段均衡器第 3 段 */
+#define WM8978_REG_EQ4                           ((uint8_t)0x15U) /**< R21 五段均衡器第 4 段 */
+#define WM8978_REG_EQ5                           ((uint8_t)0x16U) /**< R22 五段均衡器第 5 段 */
+#define WM8978_REG_DAC_LIMITER_1                 ((uint8_t)0x18U) /**< R24 DAC 限幅器 1（使能与时间常数） */
+#define WM8978_REG_DAC_LIMITER_2                 ((uint8_t)0x19U) /**< R25 DAC 限幅器 2（门限与 boost） */
+#define WM8978_REG_NOTCH_FILTER_1                ((uint8_t)0x1BU) /**< R27 陷波滤波器 1（NFU/使能/系数） */
+#define WM8978_REG_NOTCH_FILTER_2                ((uint8_t)0x1CU) /**< R28 陷波滤波器 2（系数） */
+#define WM8978_REG_NOTCH_FILTER_3                ((uint8_t)0x1DU) /**< R29 陷波滤波器 3（系数） */
+#define WM8978_REG_NOTCH_FILTER_4                ((uint8_t)0x1EU) /**< R30 陷波滤波器 4（系数） */
+#define WM8978_REG_ALC_CONTROL_1                 ((uint8_t)0x20U) /**< R32 ALC 控制 1（通道与增益限幅） */
+#define WM8978_REG_ALC_CONTROL_2                 ((uint8_t)0x21U) /**< R33 ALC 控制 2（保持与目标电平） */
+#define WM8978_REG_ALC_CONTROL_3                 ((uint8_t)0x22U) /**< R34 ALC 控制 3（模式与 Attack/Decay） */
+#define WM8978_REG_NOISE_GATE                    ((uint8_t)0x23U) /**< R35 噪声门控制 */
+#define WM8978_REG_PLL_N                         ((uint8_t)0x24U) /**< R36 PLL 整数分频 N 与 MCLK 预分频 */
+#define WM8978_REG_PLL_K1                        ((uint8_t)0x25U) /**< R37 PLL 小数 K 高位（K[23:18]） */
+#define WM8978_REG_PLL_K2                        ((uint8_t)0x26U) /**< R38 PLL 小数 K 中位（K[17:9]） */
+#define WM8978_REG_PLL_K3                        ((uint8_t)0x27U) /**< R39 PLL 小数 K 低位（K[8:0]） */
+#define WM8978_REG_3D_CONTROL                    ((uint8_t)0x29U) /**< R41 3D 立体声增强 */
+#define WM8978_REG_BEEP_CONTROL                  ((uint8_t)0x2BU) /**< R43 蜂鸣(beep)输入控制 */
+#define WM8978_REG_INPUT_CONTROL                 ((uint8_t)0x2CU) /**< R44 输入源选择与混音 */
+#define WM8978_REG_LEFT_INPUT_PGA                ((uint8_t)0x2DU) /**< R45 左声道输入 PGA */
+#define WM8978_REG_RIGHT_INPUT_PGA               ((uint8_t)0x2EU) /**< R46 右声道输入 PGA */
+#define WM8978_REG_LEFT_ADC_BOOST                ((uint8_t)0x2FU) /**< R47 左声道 ADC 升压(boost)通路 */
+#define WM8978_REG_RIGHT_ADC_BOOST               ((uint8_t)0x30U) /**< R48 右声道 ADC 升压(boost)通路 */
+#define WM8978_REG_OUTPUT_CONTROL                ((uint8_t)0x31U) /**< R49 输出控制（混音路由/Boost/过温保护） */
+#define WM8978_REG_LEFT_MIXER                    ((uint8_t)0x32U) /**< R50 左声道输出混音器 */
+#define WM8978_REG_RIGHT_MIXER                   ((uint8_t)0x33U) /**< R51 右声道输出混音器 */
+#define WM8978_REG_LEFT_HEADPHONE_VOLUME         ((uint8_t)0x34U) /**< R52 左声道耳机(OUT1)音量 */
+#define WM8978_REG_RIGHT_HEADPHONE_VOLUME        ((uint8_t)0x35U) /**< R53 右声道耳机(OUT1)音量 */
+#define WM8978_REG_LEFT_SPEAKER_VOLUME           ((uint8_t)0x36U) /**< R54 左声道喇叭(OUT2)音量 */
+#define WM8978_REG_RIGHT_SPEAKER_VOLUME          ((uint8_t)0x37U) /**< R55 右声道喇叭(OUT2)音量 */
+#define WM8978_REG_OUT3_MIXER                    ((uint8_t)0x38U) /**< R56 OUT3 混音器 */
+#define WM8978_REG_OUT4_MIXER                    ((uint8_t)0x39U) /**< R57 OUT4 混音器 */
 
 /* 复位值。R0 为非锁存命令，无硬件复位值。 */
 #define WM8978_R00_RESET_VALUE                   ((uint16_t)0x000U)

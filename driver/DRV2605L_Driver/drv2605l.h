@@ -27,7 +27,8 @@ extern "C"
 
 /* ══════════════════════════ 结果码 ══════════════════════════ */
 
-typedef enum {
+typedef enum
+{
     DRV2605L_OK = 0,             /**< 操作成功 */
     DRV2605L_ERR_IO,             /**< I2C 通信失败 */
     DRV2605L_ERR_PARAM,          /**< 空指针、地址或参数非法 */
@@ -38,7 +39,8 @@ typedef enum {
 
 /* ══════════════════════════ 模式与器件枚举 ══════════════════════════ */
 
-typedef enum {
+typedef enum
+{
     DRV2605L_MODE_INTERNAL_TRIGGER = 0, /**< I2C GO 位触发 ROM 波形 */
     DRV2605L_MODE_EXTERNAL_EDGE     = 1, /**< IN/TRIG 上升沿触发 */
     DRV2605L_MODE_EXTERNAL_LEVEL    = 2, /**< IN/TRIG 电平触发 */
@@ -49,12 +51,14 @@ typedef enum {
     DRV2605L_MODE_AUTO_CALIBRATION  = 7  /**< 自动校准流程 */
 } drv2605l_mode_t;
 
-typedef enum {
+typedef enum
+{
     DRV2605L_ACTUATOR_ERM = 0, /**< 偏心转子电机 */
     DRV2605L_ACTUATOR_LRA = 1  /**< 线性谐振执行器 */
 } drv2605l_actuator_t;
 
-typedef enum {
+typedef enum
+{
     DRV2605L_LIBRARY_EMPTY = 0, /**< 空库 */
     DRV2605L_LIBRARY_ERM_A  = 1, /**< TS2200 Library A */
     DRV2605L_LIBRARY_ERM_B  = 2, /**< TS2200 Library B */
@@ -67,7 +71,8 @@ typedef enum {
 
 /* ══════════════════════════ 设备句柄 ══════════════════════════ */
 
-typedef struct {
+typedef struct
+{
     void    *io_ctx;     /**< 总线上下文，由调用者拥有并负责保持有效 */
     uint8_t dev_addr;    /**< 7 位 I2C 地址，DRV2605L 固定为 0x5A */
     uint8_t inited;      /**< 初始化成功为 1，复位或失败后为 0 */

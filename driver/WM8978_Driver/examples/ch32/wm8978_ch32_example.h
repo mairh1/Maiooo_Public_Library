@@ -2,6 +2,10 @@
  * @file    wm8978_ch32_example.h
  * @brief   显式 CH32 WM8978 初始化示例的声明
  *
+ * @author  Maiooo
+ * @version 1.0.0
+ * @date    2026-08-13
+ *
  * SPDX-License-Identifier: WTFPL
  */
 
