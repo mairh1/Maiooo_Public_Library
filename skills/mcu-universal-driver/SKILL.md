@@ -178,7 +178,7 @@ description: 单片机通用驱动框架约束——跨平台可移植驱动的�
 
 ## 代码规范约束（S1–S5）
 
-架构约束之外，驱动代码本身遵循以下规范；修复既有代码时遵守本章末「修复红线」。S1–S4 与 `mcu-code-style` skill 的对应规则一致，S5 为本 skill 新增要求：驱动 / 驱动框架场景以本 skill 为准（一并覆盖架构约束），非驱动的 MCU 代码规范检查交给 `mcu-code-style`。
+架构约束之外，驱动代码本身遵循以下规范；修复既有代码时遵守本章末「修复红线」。S1–S5 的规范、优先级与例外以本章为唯一准则。
 
 ### S1 命名
 
@@ -289,4 +289,4 @@ S5 的可读性要求不授权在规范修复中擅自改变执行逻辑，仍�
 两份参考文档给出约束背后的原理与对照示例，属深度参考——与正文冲突时以正文为准：
 
 - [references/architecture.md](references/architecture.md)：十条硬约束的设计原理、线程安全三级模型、ISR 与异步事件模型、典型范例形态
-- [references/code-style.md](references/code-style.md)：S1–S4 完整规则与 ❌/✅ 对照示例、`.clang-format` / `.editorconfig` 生成模式
+- [references/code-style.md](references/code-style.md)：S1–S5 完整规则与 ❌/✅ 对照示例、`.clang-format` / `.editorconfig` 生成模式

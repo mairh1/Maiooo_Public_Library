@@ -1,5 +1,5 @@
 # 单片机嵌入式 C 代码格式模板（mcu-code-style skill）
-# 仅覆盖 R2 格式类规则；R1 命名 / R3 注释 / R4 架构 / R5 ISR 安全由 AI 按 skill 执行
+# 仅覆盖 S2 格式类规则；S1 命名 / S3 注释 / S4 ISR 与共享数据 / S5 可读性由 AI 按 skill 执行
 ---
 BasedOnStyle: LLVM
 IndentWidth: 4
