@@ -3,7 +3,7 @@
 面向 32 位 MCU 的 ModelGauge 锂电电量计驱动。核心使用纯 C99，不含任何厂商头文件，不分配动态内存，
 不使用浮点、递归或全局可变状态；CH32 等平台通过 `max17048_io.h` 移植契约接入。
 
-实现依据归档在项目根 [datasheet/MAX17048_C2682616.pdf](../../datasheet/MAX17048_C2682616.pdf)：
+实现依据归档在驱动目录 [MAX17048_C2682616.pdf](MAX17048_C2682616.pdf)：
 
 - 芯片手册：MAX17048/MAX17049, 19-6171; **Rev 7; 11/16**（Analog Devices/Maxim）
 - 采购料号：MAX17048G+T10（TDFN-8，1 节）
@@ -238,7 +238,7 @@ I2C：7 位地址 **0x36**（8 位写 0x6C / 读 0x6D），最高 400kHz，16 �
 | `examples/ch32/` | CH32 BSP 桥接模板与完整使用示例（不绑定型号/SDK） |
 | `tests/test_max17048.c` | 寄存器镜像 mock 单测（换算、位打包、访问序列、故障注入） |
 | `tests/run_tests.ps1` | MounRiver ARM/RV32 编译 + RV32 模拟执行脚本 |
-| `datasheet/MAX17048_C2682616.pdf` | 数据手册存档（项目根 datasheet/ 目录，Rev 7） |
+| `MAX17048_C2682616.pdf` | 数据手册存档（驱动目录根，Rev 7） |
 
 ## 8. 运行测试
 

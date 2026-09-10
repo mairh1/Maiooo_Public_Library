@@ -2,7 +2,7 @@
 
 适用于 **SGM41513 / SGM41513A / SGM41513D**（圣邦微 SG Micro）单节锂电充电管理
 芯片的纯 C99 跨平台驱动。参考数据手册：*SGM41513_SGM41513A_SGM41513D*，
-REV. C.1, APRIL 2025（本地归档：[datasheet/SGM41513.pdf](../../datasheet/SGM41513.pdf)）。
+REV. C.1, APRIL 2025（本地归档：[SGM41513.pdf](SGM41513.pdf)）。
 
 | 项目 | 说明 |
 |---|---|

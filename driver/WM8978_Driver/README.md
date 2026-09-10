@@ -1,6 +1,6 @@
 # WM8978 通用驱动
 
-这是依据归档在项目根 [datasheet/WM8978_C323850.pdf](../../datasheet/WM8978_C323850.pdf)（WM8978 Production Data，Rev 4.5，2011-10）编写的可移植 C99 驱动。核心层不包含任何 CH32/WCH 头文件，可用于 ARM Cortex-M、RV32 以及其他 32 位单片机；CH32 只在移植层实现固定 IO 契约并绑定具体 I2C、GPIO、延时和音频外设。
+这是依据归档在驱动目录 [WM8978_C323850.pdf](WM8978_C323850.pdf)（WM8978 Production Data，Rev 4.5，2011-10）编写的可移植 C99 驱动。核心层不包含任何 CH32/WCH 头文件，可用于 ARM Cortex-M、RV32 以及其他 32 位单片机；CH32 只在移植层实现固定 IO 契约并绑定具体 I2C、GPIO、延时和音频外设。
 
 ## 文件说明
 
@@ -16,7 +16,7 @@
 | `examples/ch32/wm8978_ch32_example.*` | I2S、16 位、Codec 从机、48 kHz 系数组的明确示例 |
 | `docs/datasheet-notes.md` | 数据手册页码依据、内部矛盾及实现取舍 |
 | `tests/` | 假总线行为测试、RV32I 解释执行器、公共头和多翻译单元编译夹具 |
-| [../../datasheet/WM8978_C323850.pdf](../../datasheet/WM8978_C323850.pdf) | 芯片手册归档：项目根 `datasheet/` 目录，WM8978 Production Data，Rev 4.5（2011-10） |
+| [WM8978_C323850.pdf](WM8978_C323850.pdf) | 芯片手册归档：驱动目录根，WM8978 Production Data，Rev 4.5（2011-10） |
 
 ## 分层架构
 

@@ -15,7 +15,6 @@ Public_Library/
 │   ├── DRV2605L_Driver/       # DRV2605L ERM/LRA 触觉电机驱动
 │   ├── MAX17260_Driver/       # MAX17260 ModelGauge m5 EZ 电量计驱动
 │   └── RGB_Driver/            # WS2812 类可寻址 RGB LED 驱动
-├── datasheet/                 # 芯片数据手册归档（AW32257/DRV2605L/INA219/MAX17048/MAX17260/SGM41513/WM8978/WS2812B）
 ├── middleware/                # 与硬件无关的通用中间件
 │   ├── fsm/                   # 查表法有限状态机框架
 │   ├── sort/                  # 冒泡排序算法（多类型）

@@ -2,7 +2,7 @@
 
 面向 32 位 MCU 的 MAX17260 1 节锂电 ModelGauge m5 EZ 电量计驱动。核心使用纯 C99，不含任何厂商头文件，不分配动态内存，不使用浮点、递归或全局可变状态；CH32 等平台通过 `max17260_io.h` 移植契约接入。
 
-实现依据仓库根 `datasheet/MAX17260.pdf` 数据手册：
+实现依据驱动目录 `MAX17260.pdf` 数据手册：
 
 - 芯片手册：**MAX17260, 19-100249; Rev 2; 7/24**（Analog Devices / Maxim）
 - 封装：14-pin TDFN（3mm × 3mm）或 9-pin WLP（1.5mm × 1.5mm）
@@ -269,4 +269,4 @@ I2C：7 位地址 **0x36**（SEWL+ / SETD+）或 **0x0D**（BEWL+），最高 40
 | `max17260_regs.h` | 寄存器地址、位定义与字段掩码（POR 值见地址行尾注释） |
 | `max17260_io.h` | 移植契约（3 必选 + 2 可选函数） |
 | `port/max17260_io_template.c` | 移植模板（填空注释 + STM32 HAL/ESP-IDF/裸机示例） |
-| `datasheet/MAX17260.pdf` | 数据手册副本（Rev 2，位于仓库根 `datasheet/`） |
+| `MAX17260.pdf` | 数据手册副本（Rev 2，位于驱动目录根） |

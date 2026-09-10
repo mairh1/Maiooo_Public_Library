@@ -150,7 +150,7 @@ for (;;) {
 2. `latch`：等待灯带要求的复位/锁存时间。
 3. 可选 `lock`/`unlock`：在 RTOS 或多线程场景保护发送过程。
 
-CH32 示例见 `examples/ch32/rgbled_ch32_port_example.h/.c`。该示例刻意不包含任何 WCH 设备头文件，实际工程将自己的 SPI、DMA、GPIO 或定时器函数包装后绑定即可。位时序参数见归档 [datasheet/WS2812B.pdf](../../datasheet/WS2812B.pdf)（世界半导体 WS2812B，800Kbps NZR 协议）。
+CH32 示例见 `examples/ch32/rgbled_ch32_port_example.h/.c`。该示例刻意不包含任何 WCH 设备头文件，实际工程将自己的 SPI、DMA、GPIO 或定时器函数包装后绑定即可。位时序参数见归档 [WS2812B.pdf](WS2812B.pdf)（世界半导体 WS2812B，800Kbps NZR 协议）。
 
 ## 结果码
 

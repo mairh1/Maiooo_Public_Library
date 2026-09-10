@@ -101,15 +101,14 @@ Invoke-Checked -Executable $armGcc -Arguments @("--version")
 Invoke-Checked -Executable $rvGcc -Arguments @("--version")
 Invoke-Checked -Executable $rvRun -Arguments @("--version")
 
-# Resolve the datasheet PDF by wildcard from the repository root datasheet/
-# archive; the archive file name is ASCII-safe (MAX17048_C2682616.pdf).
-$datasheetRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot "..\..\datasheet"))
-$pdfFile = Get-ChildItem -LiteralPath $datasheetRoot -Filter "MAX17048*.pdf" |
+# Resolve the datasheet PDF by wildcard from the driver root directory;
+# the archive file name is ASCII-safe (MAX17048_C2682616.pdf).
+$pdfFile = Get-ChildItem -LiteralPath $projectRoot -Filter "MAX17048*.pdf" |
     Where-Object { -not $_.PSIsContainer } |
     Select-Object -First 1
 if ($null -eq $pdfFile)
 {
-    throw "No datasheet PDF found in $datasheetRoot"
+    throw "No datasheet PDF found in $projectRoot"
 }
 $pdfPath = $pdfFile.FullName
 $expectedPdfSha256 = "70DC8EEF0E012276DCDC58B6DCE64AF08258304BCF865CEACE64E856B8029330"

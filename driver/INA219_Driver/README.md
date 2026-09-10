@@ -3,7 +3,7 @@
 面向 32 位 MCU 的 TI INA219A/INA219B 零漂移电流监测驱动。核心使用纯 C99，不含任何厂商头文件，
 不分配动态内存，不使用浮点、递归或全局可变状态；CH32 等平台通过 `ina219_io.h` 移植契约接入。
 
-实现依据归档在项目根 [datasheet/INA219_ti_zhcsfn9g.pdf](../../datasheet/INA219_ti_zhcsfn9g.pdf)：
+实现依据归档在驱动目录 [INA219_ti_zhcsfn9g.pdf](INA219_ti_zhcsfn9g.pdf)：
 
 - 芯片手册：INA219, **ZHCSFN9G**（2008-08 初版，2015-12 修订，Texas Instruments，中文版）
 - 文件 SHA-256：`2C973858ED8290732F2AEC3EFA66230F69FD741C1DD9E888382632BB400E7770`
@@ -222,4 +222,4 @@ void app_single_shot(void)
 | `port/ina219_io_template.c` | 移植模板（STM32 HAL / ESP-IDF / 伪代码示例） |
 | `examples/ch32/` | CH32 桥接与完整使用示例 |
 | `tests/` | mock 单元测试与门禁脚本 |
-| `datasheet/INA219_ti_zhcsfn9g.pdf` | TI 数据手册存档（项目根 datasheet/ 目录） |
+| `INA219_ti_zhcsfn9g.pdf` | TI 数据手册存档（驱动目录根） |
