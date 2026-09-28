@@ -11,7 +11,7 @@
  * 核心设计：
  * - 配置与实例分离：状态表 / 动作表 / 钩子 / 上下文等不变配置集中到
  *   @ref fsm_config_t，由用户定义为 const 对象（编译进 ROM）；运行实例
- *   @ref fsm_t 仅保存配置指针与状态值，32 位平台约占 8 字节 RAM
+ *   @ref fsm_t 保存配置指针、状态值与重入保护标志，32 位平台约占 8 字节 RAM
  * - 状态处理函数以数组形式注册，通过状态值索引调用
  * - 用户可自定义状态枚举（uint8_t 范围），与状态表一一对应
  * - entry / exit 动作、切换钩子、上一状态回退三个可选特性均可通过
@@ -64,6 +64,8 @@
  * @attention
  * - entry / exit 动作与切换钩子内不得再调用 @ref fsm_set_state；
  *   嵌套调用会返回 @ref FSM_ERR_REENTRANT。
+ * - 派发或切换回调期间不得重新初始化同一实例，也不得递归派发同一实例；
+ *   嵌套调用会返回 @ref FSM_ERR_REENTRANT。
  * - 模块本身不关中断、不加锁：同一实例若在 ISR 与主循环中并发访问，
  *   互斥由调用方保证。
  */
@@ -106,7 +108,7 @@ typedef enum {
     FSM_OK                =  0,   /**< 操作成功 */
     FSM_ERR_NULL_PTR      = -1,   /**< 空指针错误 */
     FSM_ERR_INVALID_STATE = -2,   /**< 状态值超出状态表范围 */
-    FSM_ERR_REENTRANT     = -3    /**< 转换回调中禁止嵌套切换 */
+    FSM_ERR_REENTRANT     = -3    /**< 同一实例发生不允许的嵌套调用 */
 } fsm_status_t;
 
 /* ========================================================================== */
@@ -177,7 +179,7 @@ typedef struct {
  * @brief 状态机实例结构体
  *
  * 实例仅保存配置指针与运行状态，应用代码应通过 API 访问，
- * 不要直接读写成员。
+ * 不要直接读写成员。首次初始化前必须清零整个实例。
  */
 struct fsm_s {
     const fsm_config_t * config;                /**< 静态配置指针（通常位于 ROM）    */
@@ -186,6 +188,7 @@ struct fsm_s {
     uint8_t prev_state;                         /**< 上一个状态值（用于状态回退）    */
 #endif
     bool transition_active;                     /**< 状态转换回调是否正在执行      */
+    bool dispatch_active;                       /**< 事件处理函数是否正在执行      */
 };
 
 /* ========================================================================== */
@@ -197,6 +200,8 @@ struct fsm_s {
  *
  * 将状态机绑定到静态配置，并设置初始状态。
  * 不会自动执行初始状态的 entry 动作，如需执行请随后手动调用。
+ * 首次调用前实例必须清零（静态实例天然清零；自动变量使用 fsm_t fsm = {0}）。
+ * 可在空闲时重新初始化；派发或切换回调期间重新初始化会被拒绝。
  *
  * @param[out] fsm            状态机实例指针
  * @param[in]  config         静态配置指针（生命周期必须覆盖实例使用期）
@@ -205,6 +210,7 @@ struct fsm_s {
  * @retval FSM_OK                 初始化成功
  * @retval FSM_ERR_NULL_PTR       fsm、config 或 config->state_table 为 NULL
  * @retval FSM_ERR_INVALID_STATE  initial_state >= state_count 或 state_count == 0
+ * @retval FSM_ERR_REENTRANT      实例正在派发事件或执行状态切换
  *
  * @attention state_count 必须与状态表实际大小一致，否则边界检查将失效。
  */
@@ -224,11 +230,12 @@ fsm_status_t fsm_init(fsm_t * fsm,
  * @retval FSM_OK                 事件已处理
  * @retval FSM_ERR_NULL_PTR       fsm 为 NULL
  * @retval FSM_ERR_INVALID_STATE  实例未初始化、状态越界或当前状态无处理函数
+ * @retval FSM_ERR_REENTRANT      实例正在派发事件或执行状态切换
  *
  * @note 状态切换在处理函数内部通过 @ref fsm_set_state 完成。
  *       事件值的合法性校验由用户处理函数负责。
- * @attention 处理函数调用期间实例处于"转移中"状态，禁止在其他上下文
- *            并发调用本实例的任何 API。
+ * @attention 处理函数调用期间禁止再次向同一实例派发事件；处理函数仍可
+ *            调用 fsm_set_state。不同上下文并发访问须由调用方互斥。
  */
 fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event);
 

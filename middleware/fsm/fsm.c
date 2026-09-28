@@ -7,9 +7,9 @@
  *
  * @details
  * 基于查表法的状态机实现：配置与实例分离，不变配置位于 const
- * fsm_config_t（ROM），实例仅保存配置指针与状态值。
- * entry / exit 动作、切换钩子、上一状态记录与参数校验均可通过
- * fsm_conf.h 编译期裁剪，全部关闭后仅剩派发与切换核心路径。
+ * fsm_config_t（ROM），实例保存配置指针、状态值与重入保护标志。
+ * entry / exit 动作、切换钩子与上一状态记录可通过 fsm_conf.h
+ * 编译期裁剪；基础参数校验与重入保护始终保留。
  *
  * @ingroup algo_fsm
  */
@@ -108,6 +108,12 @@ fsm_status_t fsm_init(fsm_t * fsm,
                       uint8_t initial_state)
 {
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
+
+    if (fsm->transition_active || fsm->dispatch_active)
+    {
+        return FSM_ERR_REENTRANT;
+    }
+
     FSM_ASSERT_PTR(config, FSM_ERR_NULL_PTR);
     FSM_ASSERT_PTR(config->state_table, FSM_ERR_NULL_PTR);
 
@@ -123,6 +129,7 @@ fsm_status_t fsm_init(fsm_t * fsm,
     fsm->prev_state    = initial_state;
 #endif
     fsm->transition_active = false;
+    fsm->dispatch_active = false;
 
     return FSM_OK;
 }
@@ -132,6 +139,11 @@ fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event)
     fsm_state_handler_t handler;
 
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
+
+    if (fsm->transition_active || fsm->dispatch_active)
+    {
+        return FSM_ERR_REENTRANT;
+    }
 
     if (!fsm_is_state_valid(fsm, fsm->current_state))
     {
@@ -145,7 +157,9 @@ fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event)
         return FSM_ERR_INVALID_STATE;
     }
 
+    fsm->dispatch_active = true;
     handler(fsm, event);
+    fsm->dispatch_active = false;
 
     return FSM_OK;
 }
