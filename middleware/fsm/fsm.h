@@ -2,7 +2,7 @@
  * @file    fsm.h
  * @brief   轻量级有限状态机模块头文件
  * @author  Maiooo
- * @version 3.0.0
+ * @version 4.0.0
  * @date    2026-08-28
  *
  * @details
@@ -12,11 +12,14 @@
  * - 配置与实例分离：状态表 / 动作表 / 钩子 / 上下文等不变配置集中到
  *   @ref fsm_config_t，由用户定义为 const 对象（编译进 ROM）；运行实例
  *   @ref fsm_t 仅保存配置指针与状态值，32 位平台约占 8 字节 RAM
- * - 状态处理函数以数组形式注册，通过状态值索引调用
+ * - 状态处理函数以数组形式注册，通过状态值索引调用；处理函数返回
+ *   bool 告知框架事件是否被消费，未消费时派发返回 @ref FSM_ERR_UNHANDLED
  * - 用户可自定义状态枚举（uint8_t 范围），与状态表一一对应
  * - entry / exit 动作、切换钩子、上一状态回退三个可选特性均可通过
  *   fsm_conf.h 编译期裁剪，不使用则零代码空间
  * - 纯 C99、零平台依赖：无 OS API、无动态内存、无静态全局状态，天然多实例
+ * - 双重派发保护：实例内记录"转换中"与"派发中"标志，回调或处理函数
+ *   再次进入派发 / 切换时返回 @ref FSM_ERR_REENTRANT
  *
  * @ingroup algo_fsm
  *
@@ -26,15 +29,17 @@
  * typedef enum { STATE_IDLE, STATE_RUN, STATE_MAX } state_t;
  * typedef enum { EVT_START, EVT_STOP, EVT_MAX } event_t;
  *
- * // 2. 编写状态处理函数
- * static void on_idle(fsm_t * fsm, uint8_t evt)
+ * // 2. 编写状态处理函数（返回 true 表示事件已处理）
+ * static bool on_idle(fsm_t * fsm, uint8_t evt)
  * {
- *     if (evt == EVT_START) { fsm_set_state(fsm, STATE_RUN); }
+ *     if (evt == EVT_START) { (void)fsm_set_state(fsm, STATE_RUN); return true; }
+ *     return false;
  * }
  *
- * static void on_run(fsm_t * fsm, uint8_t evt)
+ * static bool on_run(fsm_t * fsm, uint8_t evt)
  * {
- *     if (evt == EVT_STOP) { fsm_set_state(fsm, STATE_IDLE); }
+ *     if (evt == EVT_STOP) { (void)fsm_set_state(fsm, STATE_IDLE); return true; }
+ *     return false;
  * }
  *
  * // 3. 编写进入/退出动作（可选，FSM_CFG_USE_ENTRY_EXIT = 1 时存在）
@@ -64,6 +69,8 @@
  * @attention
  * - entry / exit 动作与切换钩子内不得再调用 @ref fsm_set_state；
  *   嵌套调用会返回 @ref FSM_ERR_REENTRANT。
+ * - 状态处理函数与上述回调内均不得调用 @ref fsm_dispatch_event；
+ *   重入派发会返回 @ref FSM_ERR_REENTRANT。
  * - 模块本身不关中断、不加锁：同一实例若在 ISR 与主循环中并发访问，
  *   互斥由调用方保证。
  */
@@ -88,8 +95,8 @@ extern "C" {
 /**
  * @brief 无效状态标识符
  *
- * 用于 @ref fsm_get_state / @ref fsm_get_prev_state 在传入空指针时的
- * 返回值，表示状态机处于未定义状态。
+ * 用于 @ref fsm_get_state / @ref fsm_get_prev_state 在传入空指针或
+ * 实例未初始化时的返回值，表示状态机处于未定义状态。
  *
  * @attention 用户状态枚举不应使用 0xFF 作为合法值。
  */
@@ -103,10 +110,13 @@ extern "C" {
  * @brief 状态机操作返回码
  */
 typedef enum {
-    FSM_OK                =  0,   /**< 操作成功 */
-    FSM_ERR_NULL_PTR      = -1,   /**< 空指针错误 */
-    FSM_ERR_INVALID_STATE = -2,   /**< 状态值超出状态表范围 */
-    FSM_ERR_REENTRANT     = -3    /**< 转换回调中禁止嵌套切换 */
+    FSM_OK                  =  0,   /**< 操作成功 */
+    FSM_ERR_NULL_PTR        = -1,   /**< 空指针错误 */
+    FSM_ERR_INVALID_STATE   = -2,   /**< 状态值超出状态表范围，或状态表条目数为 0 */
+    FSM_ERR_REENTRANT       = -3,   /**< 在回调或处理函数中重入派发 / 切换 */
+    FSM_ERR_UNHANDLED       = -4,   /**< 处理函数返回 false，事件未被消费 */
+    FSM_ERR_NO_HANDLER      = -5,   /**< 当前状态未注册处理函数 */
+    FSM_ERR_NOT_INITIALIZED = -6    /**< 实例未绑定有效配置 */
 } fsm_status_t;
 
 /* ========================================================================== */
@@ -123,8 +133,13 @@ typedef struct fsm_s fsm_t;
  *
  * @param[in,out] fsm   状态机实例指针（可在函数内调用 fsm_set_state 等）
  * @param[in]     event 事件值（通常来自用户定义的枚举）
+ *
+ * @retval true   事件已被处理（或已触发状态切换）
+ * @retval false  事件未被处理，派发将返回 @ref FSM_ERR_UNHANDLED
+ *
+ * @attention 处理函数内不得调用 @ref fsm_dispatch_event（重入派发）。
  */
-typedef void (*fsm_state_handler_t)(fsm_t * fsm, uint8_t event);
+typedef bool (*fsm_state_handler_t)(fsm_t * fsm, uint8_t event);
 
 #if FSM_CFG_USE_ENTRY_EXIT
 
@@ -185,7 +200,10 @@ struct fsm_s {
 #if FSM_CFG_USE_PREV_STATE
     uint8_t prev_state;                         /**< 上一个状态值（用于状态回退）    */
 #endif
+#if FSM_CFG_USE_ENTRY_EXIT || FSM_CFG_USE_HOOK
     bool transition_active;                     /**< 状态转换回调是否正在执行      */
+#endif
+    bool dispatching;                           /**< 事件派发是否正在进行          */
 };
 
 /* ========================================================================== */
@@ -196,7 +214,8 @@ struct fsm_s {
  * @brief 初始化状态机实例
  *
  * 将状态机绑定到静态配置，并设置初始状态。
- * 不会自动执行初始状态的 entry 动作，如需执行请随后手动调用。
+ * 不会自动执行初始状态的 entry 动作，如需执行请随后调用
+ * @ref fsm_run_entry（需要 FSM_CFG_USE_ENTRY_EXIT = 1）。
  *
  * @param[out] fsm            状态机实例指针
  * @param[in]  config         静态配置指针（生命周期必须覆盖实例使用期）
@@ -215,20 +234,23 @@ fsm_status_t fsm_init(fsm_t * fsm,
 /**
  * @brief 分发事件到当前状态的处理函数
  *
- * 查找当前状态对应的处理函数并调用。若处理函数为 NULL（该状态
- * 不处理任何事件），返回 @ref FSM_ERR_INVALID_STATE。
+ * 查找当前状态对应的处理函数并调用。处理函数返回 false 时，
+ * 派发返回 @ref FSM_ERR_UNHANDLED，便于调用方感知未处理事件。
  *
  * @param[in,out] fsm    状态机实例指针
  * @param[in]     event  事件值
  *
- * @retval FSM_OK                 事件已处理
+ * @retval FSM_OK                 事件已被处理
  * @retval FSM_ERR_NULL_PTR       fsm 为 NULL
- * @retval FSM_ERR_INVALID_STATE  实例未初始化、状态越界或当前状态无处理函数
+ * @retval FSM_ERR_NOT_INITIALIZED 实例未绑定有效配置
+ * @retval FSM_ERR_INVALID_STATE  当前状态超出状态表范围
+ * @retval FSM_ERR_NO_HANDLER     当前状态未注册处理函数
+ * @retval FSM_ERR_REENTRANT      已在派发或转换回调中
+ * @retval FSM_ERR_UNHANDLED      处理函数返回 false
  *
  * @note 状态切换在处理函数内部通过 @ref fsm_set_state 完成。
- *       事件值的合法性校验由用户处理函数负责。
- * @attention 处理函数调用期间实例处于"转移中"状态，禁止在其他上下文
- *            并发调用本实例的任何 API。
+ * @attention 处理函数执行期间实例处于"派发中"状态，禁止在本函数
+ *            重入调用本实例的任何 API。
  */
 fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event);
 
@@ -247,13 +269,34 @@ fsm_status_t fsm_dispatch_event(fsm_t * fsm, uint8_t event);
  *
  * @retval FSM_OK                 状态已切换
  * @retval FSM_ERR_NULL_PTR       fsm 为 NULL
- * @retval FSM_ERR_INVALID_STATE  实例未初始化或 new_state >= state_count
+ * @retval FSM_ERR_NOT_INITIALIZED 实例未绑定有效配置
+ * @retval FSM_ERR_INVALID_STATE  new_state >= state_count
  * @retval FSM_ERR_REENTRANT      在 entry / exit / hook 回调中嵌套切换
  *
  * @note 目标状态与当前状态相同时仍会执行 exit / entry 动作链，
  *       如需跳过相同状态的切换，请在调用前用 @ref fsm_is_state 自行检查。
  */
 fsm_status_t fsm_set_state(fsm_t * fsm, uint8_t new_state);
+
+#if FSM_CFG_USE_ENTRY_EXIT
+
+/**
+ * @brief 执行当前状态的 entry 动作（FSM_CFG_USE_ENTRY_EXIT = 1 时存在）
+ *
+ * 用于 @ref fsm_init 之后补执行初始状态的进入动作，或需要重新执行
+ * 进入动作的场景。不会触发 exit 动作与切换钩子，也不会改变当前状态。
+ *
+ * @param[in,out] fsm 状态机实例指针
+ *
+ * @retval FSM_OK                 已执行（或未配置 entry 动作 / 动作为 NULL）
+ * @retval FSM_ERR_NULL_PTR       fsm 为 NULL
+ * @retval FSM_ERR_NOT_INITIALIZED 实例未绑定有效配置
+ * @retval FSM_ERR_INVALID_STATE  当前状态超出状态表范围
+ * @retval FSM_ERR_REENTRANT      已在转换回调中
+ */
+fsm_status_t fsm_run_entry(fsm_t * fsm);
+
+#endif /* FSM_CFG_USE_ENTRY_EXIT */
 
 /* ========================================================================== */
 /*  内联查询函数（零调用开销）                                                   */
@@ -264,11 +307,11 @@ fsm_status_t fsm_set_state(fsm_t * fsm, uint8_t new_state);
  *
  * @param[in] fsm  状态机实例指针
  *
- * @return 当前状态值；若 fsm 为 NULL，返回 @ref FSM_STATE_INVALID。
+ * @return 当前状态值；若 fsm 为 NULL 或实例未初始化，返回 @ref FSM_STATE_INVALID。
  */
 static inline uint8_t fsm_get_state(const fsm_t * fsm)
 {
-    if (fsm == NULL)
+    if ((fsm == NULL) || (fsm->config == NULL))
     {
         return FSM_STATE_INVALID;
     }
@@ -283,11 +326,11 @@ static inline uint8_t fsm_get_state(const fsm_t * fsm)
  * @param[in] state  待检查的状态值
  *
  * @retval true   当前状态等于 state
- * @retval false  当前状态不等于 state，或 fsm 为 NULL
+ * @retval false  当前状态不等于 state，或 fsm 为 NULL / 未初始化
  */
 static inline bool fsm_is_state(const fsm_t * fsm, uint8_t state)
 {
-    if (fsm == NULL)
+    if ((fsm == NULL) || (fsm->config == NULL))
     {
         return false;
     }
@@ -302,14 +345,14 @@ static inline bool fsm_is_state(const fsm_t * fsm, uint8_t state)
  *
  * @param[in] fsm  状态机实例指针
  *
- * @return 上一个状态值；若 fsm 为 NULL，返回 @ref FSM_STATE_INVALID。
+ * @return 上一个状态值；若 fsm 为 NULL 或实例未初始化，返回 @ref FSM_STATE_INVALID。
  *         初始状态下 prev_state 等于 initial_state。
  *
  * @note 可用于实现"回到上一个状态"的逻辑：fsm_set_state(fsm, fsm_get_prev_state(fsm))。
  */
 static inline uint8_t fsm_get_prev_state(const fsm_t * fsm)
 {
-    if (fsm == NULL)
+    if ((fsm == NULL) || (fsm->config == NULL))
     {
         return FSM_STATE_INVALID;
     }
@@ -318,6 +361,45 @@ static inline uint8_t fsm_get_prev_state(const fsm_t * fsm)
 }
 
 #endif /* FSM_CFG_USE_PREV_STATE */
+
+/**
+ * @brief 获取配置中的用户私有数据指针
+ *
+ * @param[in] fsm  状态机实例指针
+ *
+ * @return 用户私有数据指针；若 fsm 为 NULL 或实例未初始化，返回 NULL。
+ */
+static inline void * fsm_get_user_data(const fsm_t * fsm)
+{
+    if ((fsm == NULL) || (fsm->config == NULL))
+    {
+        return NULL;
+    }
+
+    return fsm->config->user_data;
+}
+
+/**
+ * @brief 查询状态转换回调是否正在执行
+ *
+ * @param[in] fsm  状态机实例指针
+ *
+ * @retval true   当前正处于 exit / entry / hook 回调中
+ * @retval false  不在回调中，或 fsm 为 NULL
+ */
+static inline bool fsm_is_transitioning(const fsm_t * fsm)
+{
+    if (fsm == NULL)
+    {
+        return false;
+    }
+
+#if FSM_CFG_USE_ENTRY_EXIT || FSM_CFG_USE_HOOK
+    return fsm->transition_active;
+#else
+    return false;
+#endif
+}
 
 #ifdef __cplusplus
 }
