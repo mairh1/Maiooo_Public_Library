@@ -40,7 +40,7 @@
 
 ## 2. 移植三步走
 
-1. 复制 `port/ina219_io_template.c` 到工程（可改名），用平台 I2C API 填空 3~4 个函数；或直接用 `examples/ch32/` 的现成桥接。
+1. 复制 `port/ina219_io_template.c` 到工程（可改名），用平台 I2C API 填空 3~4 个函数。
 2. 按需调整 `ina219_conf.h`（采样电阻、Current_LSB、量程、功能开关），或用编译器 `-D` 覆盖。
 3. 调用 `ina219_init()`，之后核心文件零改动。
 
@@ -48,26 +48,19 @@
 （写：S+地址W+寄存器+高字节+低字节+P；读：带 Sr 重复起始），高字节在前。
 `INA219_USE_TRIGGERED=0` 时 `ina219_io_delay_ms()` 可放空实现。
 
-## 3. 使用示例（CH32）
+## 3. 使用示例
 
 ```c
 #include "ina219.h"
-#include "ina219_ch32_i2c_port.h"
 
 static ina219_dev_t g_meter;                    /* 句柄由调用者分配，可多实例 */
-static ina219_ch32_adapter_t g_adapter =
-{
-    .board_context = NULL,                      /* 单总线可为 NULL */
-    .mem_write     = board_i2c_mem_write,       /* 板级 I2C 回调 */
-    .mem_read      = board_i2c_mem_read,
-    .io_timeout_ms = 10,
-};
 
-void app_init(void)
+void app_init(void *io_ctx)
 {
     /* conf 默认：1Ω 采样电阻 / PGA /8（±320mA 量程）/
-     * Current_LSB 10µA / 双 12bit 连续转换，init 一次写入 */
-    ina219_init(&g_meter, &g_adapter, INA219_I2C_ADDR);
+     * Current_LSB 10µA / 双 12bit 连续转换，init 一次写入
+     * io_ctx 由移植层解释；地址为 7 位 INA219_I2C_ADDR */
+    ina219_init(&g_meter, io_ctx, INA219_I2C_ADDR);
 }
 
 void app_periodic_1s(void)
@@ -97,8 +90,6 @@ void app_single_shot(void)
     }
 }
 ```
-
-完整流程见 `examples/ch32/ina219_ch32_example.c`。
 
 ## 4. API 参考
 
@@ -199,19 +190,7 @@ void app_single_shot(void)
 12. **1Ω 采样电阻的功耗与压降**：满量程 320mA 时电阻功耗 0.1W、压降 320mV——确认电阻功率额定与负载电压裕量；大电流场景应换毫欧级采样电阻并重设校准。
 13. **触发模式读数时机**：单次转换完成后数据才有效，用 CNVR/`ina219_wait_conversion()` 确认，别触发后立刻读。
 
-## 7. 验证
-
-`tests/run_tests.ps1` 一键门禁（需 MounRiver 工具链，路径可 `-ArmToolchainBin`/`-RvToolchainBin`
-或环境变量 `INA219_ARM_TOOLCHAIN_BIN`/`INA219_RV_TOOLCHAIN_BIN` 指定）：
-
-- 数据手册 PDF SHA-256 校验；
-- 核心五件套平台 include 边界扫描；
-- ARM Cortex-M0 + RV32IMAC 双工具链 `-Wall -Wextra -Werror -pedantic` 编译（核心 + CH32 桥接 + 示例）；
-- RV32 模拟器 mock-I2C 单元测试（默认与 `VERIFY_WRITES=1` 两套配置，153 项检查，换算锚点取自
-  数据手册 Table 8：2mΩ/1mA 校准 → 10A/119.8W）；
-- `THREAD_SAFE=1`、`USE_TRIGGERED=0 + USE_POWER=0` 裁剪配置编译检查。
-
-## 8. 文件清单
+## 7. 文件清单
 
 | 文件 | 说明 |
 | --- | --- |
@@ -220,6 +199,4 @@ void app_single_shot(void)
 | `ina219_regs.h` | 寄存器地址 / 位定义 / 档位宏 |
 | `ina219_io.h` | 移植契约（3 必选 + 条件必选 delay + 可选锁） |
 | `port/ina219_io_template.c` | 移植模板（STM32 HAL / ESP-IDF / 伪代码示例） |
-| `examples/ch32/` | CH32 桥接与完整使用示例 |
-| `tests/` | mock 单元测试与门禁脚本 |
 | `INA219_ti_zhcsfn9g.pdf` | TI 数据手册存档（驱动目录根） |

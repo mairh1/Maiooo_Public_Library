@@ -38,7 +38,7 @@
 ## 2. 移植三步走
 
 1. 复制 `port/max17048_io_template.c` 到工程（可改名），用平台 I2C API 填空 3 个必选函数
-   （`MAX17048_USE_MODEL_TABLE=1` 时还需实现毫秒延时）；或直接用 `examples/ch32/` 的现成桥接。
+   （`MAX17048_USE_MODEL_TABLE=1` 时还需实现毫秒延时）。
 2. 按需调整 `max17048_conf.h`（变体 48/49、功能开关），或用编译器 `-D` 覆盖。
 3. 调用 `max17048_init()`，之后核心文件零改动。
 
@@ -62,25 +62,17 @@
 | `MAX17048_TEMPCO_DOWN_X10` | -50 | T≤20℃ 温补斜率 -5.0/℃（×10 表示） |
 | `MAX17048_MODEL_DELAY_MS` | 10 | 模型表解锁/复锁间等待 ms，仅 `USE_MODEL_TABLE=1` 时使用 |
 
-## 3. 使用示例（CH32）
+## 3. 使用示例
 
 ```c
 #include "max17048.h"
-#include "max17048_ch32_i2c_port.h"
 
 static max17048_dev_t g_gauge;                  /* 句柄由调用者分配，可多实例 */
-static max17048_ch32_adapter_t g_adapter =
-{
-    .board_context = NULL,                      /* 单总线可为 NULL */
-    .mem_write     = board_i2c_mem_write,       /* 板级 I2C 回调 */
-    .mem_read      = board_i2c_mem_read,
-    .io_timeout_ms = 10,
-};
 
-void app_init(void)
+void app_init(void *io_ctx)
 {
-    /* io_ctx 传适配器指针；地址为 7 位 0x36（MAX17048_I2C_ADDR） */
-    max17048_init(&g_gauge, &g_adapter, MAX17048_I2C_ADDR);
+    /* io_ctx 由移植层解释；地址为 7 位 0x36（MAX17048_I2C_ADDR） */
+    max17048_init(&g_gauge, io_ctx, MAX17048_I2C_ADDR);
     max17048_set_soc_alert_threshold(&g_gauge, 10);       /* SOC<10% 告警 */
     max17048_set_voltage_alerts(&g_gauge, 3300, 4250);
 }
@@ -104,8 +96,6 @@ void app_alert_task(void)
     max17048_clear_alerts(&g_gauge, MAX17048_STATUS_ALERT_MASK);
 }
 ```
-
-完整流程见 `examples/ch32/max17048_ch32_example.c`。
 
 ## 4. API 参考
 
@@ -235,17 +225,4 @@ I2C：7 位地址 **0x36**（8 位写 0x6C / 读 0x6D），最高 400kHz，16 �
 | `max17048_regs.h` | 寄存器地址、位定义、POR 值与命令常量 |
 | `max17048_io.h` | 移植契约（3 必选 + 1 条件必选 + 2 可选函数） |
 | `port/max17048_io_template.c` | 移植模板（填空注释 + STM32 HAL/ESP-IDF/裸机示例） |
-| `examples/ch32/` | CH32 BSP 桥接模板与完整使用示例（不绑定型号/SDK） |
-| `tests/test_max17048.c` | 寄存器镜像 mock 单测（换算、位打包、访问序列、故障注入） |
-| `tests/run_tests.ps1` | MounRiver ARM/RV32 编译 + RV32 模拟执行脚本 |
 | `MAX17048_C2682616.pdf` | 数据手册存档（驱动目录根，Rev 7） |
-
-## 8. 运行测试
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
-```
-
-脚本自动校验 PDF 哈希、核心 include 边界，然后做 ARM Cortex-M0 / RV32IMAC 双目标
-`-Wall -Wextra -Werror -pedantic` 编译，最后在 RV32 模拟器跑默认与 `VERIFY_WRITES=1` 两组单测
-（工具链路径可用参数或环境变量覆盖，缺省探测 MounRiver Studio 2 安装目录）。

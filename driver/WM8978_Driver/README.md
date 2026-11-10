@@ -12,17 +12,14 @@
 | `wm8978_conf.h` | 编译期配置入口（当前版本无功能裁剪项，五件套固定文件与未来配置入口） |
 | `port/wm8978_io_template.c` | 移植层实现模板 |
 | `wm8978.c` | 写控制字、影子寄存器、保留位保护及常用高层功能 |
-| `examples/ch32/wm8978_ch32_i2c_port.*` | 不绑定具体 WCH SDK 的 CH32 2-wire 适配层 |
-| `examples/ch32/wm8978_ch32_example.*` | I2S、16 位、Codec 从机、48 kHz 系数组的明确示例 |
 | `docs/datasheet-notes.md` | 数据手册页码依据、内部矛盾及实现取舍 |
-| `tests/` | 假总线行为测试、RV32I 解释执行器、公共头和多翻译单元编译夹具 |
 | [WM8978_C323850.pdf](WM8978_C323850.pdf) | 芯片手册归档：驱动目录根，WM8978 Production Data，Rev 4.5（2011-10） |
 
 ## 分层架构
 
 ```
 +----------------------------------------------------+
-|  应用层                                             |  用户代码 / examples/ch32
+|  应用层                                             |  用户代码
 +----------------------------------------------------+
           |  公共 API（wm8978.h）+ 统一结果码 wm8978_status_t
 +----------------------------------------------------+
@@ -86,21 +83,16 @@
 
 ## 最小使用流程
 
-下面的 `board_i2c_write7()` 和 `board_delay_ms()` 由具体 CH32 工程实现。前者必须使用有限超时，且只有在地址、两个数据字节和 STOP 都成功后才返回 0。
+下面的 `wm8978_io_write_control()` 与 `wm8978_io_delay_ms()` 由具体工程按移植契约实现（可参考 `port/wm8978_io_template.c`）。前者必须使用有限超时，且只有在地址、两个数据字节和 STOP 都成功后才返回 0。
 
 ```c
 #include "wm8978.h"
-#include "examples/ch32/wm8978_ch32_i2c_port.h"
 
 static wm8978_t codec;
-static wm8978_ch32_i2c_adapter_t codec_adapter;
 
-static int32_t board_i2c_write7(void *ctx,
-                                uint8_t address_7bit,
-                                const uint8_t *data,
-                                uint32_t length,
-                                uint32_t timeout_ms);
-static void board_delay_ms(void *ctx, uint32_t milliseconds);
+/* 由板级按 wm8978_io.h 契约实现，见 port/wm8978_io_template.c */
+extern int32_t wm8978_io_write_control(void *io_ctx, const uint8_t *frame, uint32_t length);
+extern void wm8978_io_delay_ms(void *io_ctx, uint32_t milliseconds);
 
 wm8978_status_t codec_init(void *board_i2c, uint32_t vmid_settle_ms)
 {
@@ -117,11 +109,7 @@ wm8978_status_t codec_init(void *board_i2c, uint32_t vmid_settle_ms)
         WM8978_BCLK_DIV_1
     };
 
-    codec_adapter.i2c_write7 = board_i2c_write7;
-    codec_adapter.delay_ms = board_delay_ms;
-    codec_adapter.board_context = board_i2c;
-
-    status = wm8978_ch32_i2c_bind(&codec, &codec_adapter, 10U);
+    status = wm8978_bind(&codec, board_i2c, 10U);
     if (status != WM8978_OK) return status;
     status = wm8978_soft_reset(&codec);
     if (status != WM8978_OK) return status;
@@ -134,7 +122,7 @@ wm8978_status_t codec_init(void *board_i2c, uint32_t vmid_settle_ms)
                                             WM8978_FILTER_SR_48_KHZ);
     if (status != WM8978_OK) return status;
 
-    /* 先让 CH32 的 DACDAT 保持 0，再执行防爆音上电；返回后仍是静音状态。 */
+    /* 先让板级 DACDAT 保持 0，再执行防爆音上电；返回后仍是静音状态。 */
     return wm8978_power_up_nonboost_out1(&codec,
                                           WM8978_VMID_5K,
                                           vmid_settle_ms);
@@ -322,4 +310,3 @@ Rev 4.5 的 R10[6] `SOFTMUTE` 极性在第 48 页与第 95 页互相矛盾。因
 - 实测 VMID 稳定时间、上电/掉电爆音、左右声道与音量；
 - 对目标扬声器/耳机/麦克风路由做功能和电气验收。
 
-更具体的 CH32 接入说明见 [`examples/ch32/README.md`](examples/ch32/README.md)。

@@ -48,9 +48,6 @@
 | `port/aw32257_io_template.c` | I/O 移植层桩模板 |
 | `aw32257.c` | 与 MCU/SDK 无关的实现 |
 | `aw32257_regs.h` | REG00–REG0A 地址、掩码、移位和复位值 |
-| `examples/ch32/` | 不绑定具体型号和 SDK 的 CH32 BSP 桥接模板 |
-| `tests/test_aw32257.c` | 模拟寄存器、故障注入和访问顺序测试 |
-| `tests/run_tests.ps1` | MounRiver ARM/RV32 编译及 RV32 模拟执行脚本 |
 
 ## 端口契约
 
@@ -264,28 +261,7 @@ V1.5 手册 REG04 的 33 mΩ 快充电流表与 RSNS 章节的通用快充公式
 
 核心默认非重入、非 ISR 安全，不提供内部锁。应用必须串行化同一实例以及共享 I²C 总线的访问。
 
-STAT 故障脉冲约 128 µs，建议由 CH32 EXTI 捕获，但 ISR 只能清硬件中断标志并设置事件标志。主循环或任务在安全地取走该标志后，再调用 `aw32257_read_status()`；不要在 ISR 中进行 I²C。参见 [examples/ch32/README.md](examples/ch32/README.md)。
-
-## 测试
-
-在安装了 MounRiver Studio 2 的 Windows PowerShell 中运行：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\run_tests.ps1
-```
-
-测试脚本会：
-
-- 独立编译公共头；
-- 以 `-std=c99 -Wall -Wextra -Werror -pedantic` 编译核心及 CH32 桥接示例；
-- 用 MounRiver ARM GCC 检查 Cortex-M0 目标；
-- 用 WCH RV32 GCC 检查 `RV32IMAC` 目标；
-- 用 `riscv32-wch-elf-run --model RV32IMAC` 执行模拟 I²C 单元测试；
-- 检查核心是否误引入 `main.h`、CH32/WCH SDK 头文件。
-
-单元测试覆盖 REG06 首笔访问、ID 掩码、POR_REQUIRED、安全回读、所有编码边界、保留位 RMW、无重试、错误传播、模式组合、快照全量提交、故障枚举及 RESET→32 ms 延时顺序。
-
-这些结果只能证明通用源码、模拟测试和相应工具链编译；不能替代具体 CH32 工程的时钟/GPIO/I²C 集成、链接、烧录、逻辑分析仪或实板 V4–V6 验证。
+STAT 故障脉冲约 128 µs，建议由 CH32 EXTI 捕获，但 ISR 只能清硬件中断标志并设置事件标志。主循环或任务在安全地取走该标志后，再调用 `aw32257_read_status()`；不要在 ISR 中进行 I²C。
 
 ## 许可证
 
