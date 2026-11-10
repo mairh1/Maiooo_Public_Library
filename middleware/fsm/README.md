@@ -109,6 +109,7 @@ entry / exit 动作表、切换钩子与 `fsm_run_entry()` 的用法见 `fsm.h` 
 | — | `fsm_is_transitioning()` | 新增：查询是否处于转换回调中 |
 | `fsm_get_state` / `fsm_is_state` 对未初始化实例返回 0 / false | 返回 `FSM_STATE_INVALID` / false | 行为修正，避免误判为合法状态 |
 | 回调内可重入派发 | 返回 `FSM_ERR_REENTRANT` | 处理函数与回调内均禁止重入派发 |
+| 派发 / 回调期间可重新初始化 | 返回 `FSM_ERR_REENTRANT` | 新增：重入保护扩展到 `fsm_init()` |
 
 ## v2 → v3 迁移对照（历史）
 
@@ -143,6 +144,7 @@ gcc -std=c99 -Wall -Wextra -Wpedantic -DFSM_CFG_USE_ENTRY_EXIT=0 \
 
 - **禁止嵌套转移**：entry / exit 动作与切换钩子内调用 `fsm_set_state()` 会返回 `FSM_ERR_REENTRANT`，不会执行嵌套转换。
 - **禁止重入派发**：状态处理函数与上述回调内调用 `fsm_dispatch_event()` 会返回 `FSM_ERR_REENTRANT`。
+- **实例初始化**：首次调用 `fsm_init()` 前须将实例清零（静态实例天然清零；自动变量使用 `fsm_t fsm = {0}`）。空闲时可重新初始化；派发或转换回调期间调用 `fsm_init()` 会返回 `FSM_ERR_REENTRANT`。
 - **同状态切换**：`fsm_set_state()` 对相同状态仍执行 exit → entry 链，需要跳过时先用 `fsm_is_state()` 自检。
 - **并发互斥**：模块不关中断、不加锁；同一实例若在 ISR 与主循环中并发访问，互斥由调用方保证。
 - **派发期间**：处理函数执行期间实例处于"派发中"，回调执行期间处于"转换中"，禁止重入调用本实例的任何 API。

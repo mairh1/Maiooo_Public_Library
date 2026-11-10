@@ -13,7 +13,8 @@
  *
  * 派发保护：实例内 transition_active 与 dispatching 两个标志分别
  * 覆盖"转换回调中"与"处理函数中"，任何重入派发 / 切换都会返回
- * FSM_ERR_REENTRANT，避免递归失控。
+ * FSM_ERR_REENTRANT，避免递归失控；派发或回调期间重新初始化同一
+ * 实例同样返回 FSM_ERR_REENTRANT。
  *
  * @ingroup algo_fsm
  */
@@ -124,6 +125,19 @@ fsm_status_t fsm_init(fsm_t * fsm,
                       uint8_t initial_state)
 {
     FSM_ASSERT_PTR(fsm, FSM_ERR_NULL_PTR);
+
+    /* 重入保护：派发或转换回调期间不得重新初始化同一实例 */
+    if (fsm->dispatching)
+    {
+        return FSM_ERR_REENTRANT;
+    }
+#if FSM_CFG_USE_ENTRY_EXIT || FSM_CFG_USE_HOOK
+    if (fsm->transition_active)
+    {
+        return FSM_ERR_REENTRANT;
+    }
+#endif
+
     FSM_ASSERT_PTR(config, FSM_ERR_NULL_PTR);
     FSM_ASSERT_PTR(config->state_table, FSM_ERR_NULL_PTR);
 

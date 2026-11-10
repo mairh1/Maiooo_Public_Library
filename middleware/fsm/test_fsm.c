@@ -40,6 +40,13 @@ static int s_recurse_count = 0;
 static int s_recurse_dispatch_ret = -99;
 static fsm_t * s_recurse_fsm = NULL;
 
+static fsm_t * s_reinit_fsm = NULL;
+static const fsm_config_t * s_reinit_cfg = NULL;
+static int s_handler_init_ret = -99;
+#if FSM_CFG_USE_HOOK
+static int s_hook_init_ret = -99;
+#endif
+
 static bool on_idle(fsm_t * fsm, uint8_t evt)
 {
     switch (evt)
@@ -78,6 +85,17 @@ static bool on_recurse(fsm_t * fsm, uint8_t evt)
     return true;
 }
 
+static bool on_reinit(fsm_t * fsm, uint8_t evt)
+{
+    (void)fsm; (void)evt;
+    if (s_reinit_fsm != NULL)
+    {
+        /* 处理函数内重新初始化应被拒绝 */
+        s_handler_init_ret = fsm_init(s_reinit_fsm, s_reinit_cfg, ST_IDLE);
+    }
+    return true;
+}
+
 #if FSM_CFG_USE_ENTRY_EXIT
 static void entry_idle(fsm_t * fsm) { (void)fsm; s_entry_idle++; }
 static void entry_run(fsm_t * fsm)  { (void)fsm; s_entry_run++; }
@@ -106,6 +124,16 @@ static void hook_dispatch(fsm_t * fsm, uint8_t old_s, uint8_t new_s)
     {
         /* 回调内派发应被拒绝 */
         s_hook_dispatch_ret = fsm_dispatch_event(s_hook_fsm, EVT_STOP);
+    }
+}
+
+static void hook_reinit(fsm_t * fsm, uint8_t old_s, uint8_t new_s)
+{
+    (void)fsm; (void)old_s; (void)new_s;
+    if (s_reinit_fsm != NULL)
+    {
+        /* 回调内重新初始化应被拒绝 */
+        s_hook_init_ret = fsm_init(s_reinit_fsm, s_reinit_cfg, ST_IDLE);
     }
 }
 #endif
@@ -265,7 +293,50 @@ int main(void)
         s_recurse_fsm = NULL;
     }
 
-    /* 8. 非法参数与未初始化实例 */
+    /* 8. 处理函数 / 回调内重新初始化被拦截 */
+    {
+        static const fsm_state_handler_t reinit_table[ST_MAX] = {
+            [ST_IDLE] = on_reinit,
+            [ST_RUN]  = on_reinit,
+            [ST_ERR]  = on_reinit,
+        };
+        static const fsm_config_t reinit_cfg = {
+            .state_table = reinit_table,
+            .state_count = ST_MAX,
+        };
+        fsm_t f5;
+        s_reinit_fsm = &f5;
+        s_reinit_cfg = &reinit_cfg;
+        s_handler_init_ret = -99;
+        (void)fsm_init(&f5, &reinit_cfg, ST_IDLE);
+        st = fsm_dispatch_event(&f5, EVT_START);
+        CHECK(st == FSM_OK, "outer dispatch with reinit returns OK");
+        CHECK(s_handler_init_ret == FSM_ERR_REENTRANT, "reinit in handler blocked");
+        s_reinit_fsm = NULL;
+
+        /* 空闲时重新初始化应成功 */
+        st = fsm_init(&f5, &reinit_cfg, ST_IDLE);
+        CHECK(st == FSM_OK, "reinit when idle OK");
+    }
+#if FSM_CFG_USE_HOOK
+    {
+        static const fsm_config_t hook_reinit_cfg = {
+            .state_table = s_table,
+            .state_count = ST_MAX,
+            .transition_hook = hook_reinit,
+        };
+        fsm_t f6;
+        s_reinit_fsm = &f6;
+        s_reinit_cfg = &hook_reinit_cfg;
+        s_hook_init_ret = -99;
+        (void)fsm_init(&f6, &hook_reinit_cfg, ST_IDLE);
+        (void)fsm_set_state(&f6, ST_RUN);
+        CHECK(s_hook_init_ret == FSM_ERR_REENTRANT, "reinit in hook blocked");
+        s_reinit_fsm = NULL;
+    }
+#endif
+
+    /* 9. 非法参数与未初始化实例 */
     CHECK(fsm_init(NULL, &s_cfg, ST_IDLE) == FSM_ERR_NULL_PTR, "init NULL fsm");
     CHECK(fsm_init(&fsm, NULL, ST_IDLE) == FSM_ERR_NULL_PTR, "init NULL cfg");
     CHECK(fsm_init(&fsm, &s_cfg, ST_MAX) == FSM_ERR_INVALID_STATE, "init bad state");
@@ -292,7 +363,7 @@ int main(void)
 #endif
     }
 
-    /* 9. NULL handler */
+    /* 10. NULL handler */
     {
         static const fsm_state_handler_t partial[ST_MAX] = {
             [ST_IDLE] = on_idle,
@@ -307,7 +378,7 @@ int main(void)
               "NULL handler -> FSM_ERR_NO_HANDLER");
     }
 
-    /* 10. 派发返回后标志清理 */
+    /* 11. 派发返回后标志清理 */
     CHECK(fsm_is_transitioning(&fsm) == false, "not transitioning after dispatch");
 
     printf("%s (%d failure(s))\n", s_failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

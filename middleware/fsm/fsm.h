@@ -71,6 +71,8 @@
  *   嵌套调用会返回 @ref FSM_ERR_REENTRANT。
  * - 状态处理函数与上述回调内均不得调用 @ref fsm_dispatch_event；
  *   重入派发会返回 @ref FSM_ERR_REENTRANT。
+ * - 派发或转换回调期间不得重新初始化同一实例，也不得在首次
+ *   @ref fsm_init 前使用未清零的实例；违反时返回 @ref FSM_ERR_REENTRANT。
  * - 模块本身不关中断、不加锁：同一实例若在 ISR 与主循环中并发访问，
  *   互斥由调用方保证。
  */
@@ -224,8 +226,12 @@ struct fsm_s {
  * @retval FSM_OK                 初始化成功
  * @retval FSM_ERR_NULL_PTR       fsm、config 或 config->state_table 为 NULL
  * @retval FSM_ERR_INVALID_STATE  initial_state >= state_count 或 state_count == 0
+ * @retval FSM_ERR_REENTRANT      实例正在派发事件或执行状态切换
  *
  * @attention state_count 必须与状态表实际大小一致，否则边界检查将失效。
+ * @attention 首次调用前必须将实例清零（静态实例天然清零；自动变量使用
+ *            @code fsm_t fsm = {0}; @endcode）。空闲时可重新初始化；
+ *            派发或转换回调期间重新初始化会被拒绝。
  */
 fsm_status_t fsm_init(fsm_t * fsm,
                       const fsm_config_t * config,

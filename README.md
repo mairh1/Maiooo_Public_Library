@@ -30,7 +30,7 @@ Public_Library/
 ## 组件说明
 
 - **driver/SGM41513_Driver**：SGM41513 / 41513A / 41513D 锂电充电管理驱动，I2C 接口，纯 C99 跨平台，无动态内存分配，可多实例。
-- **middleware/usb_pd_driver**：分层可移植的 USB PD 受电端协议栈（协议核心零寄存器访问），移植只需实现 `usbpd_io.h` 的 14 个函数。
+- **middleware/usb_pd_driver**：纯 C99、多实例、非阻塞的 USB PD 2.0 中间层，支持 Sink/Source/DRP、20V/3A 固定 PDO 和 PR_Swap；提供异步移植契约及模板，尚未完成硬件联调。
 - **driver/AW32257_Driver**：AW32257 充电/升压芯片通用驱动，ISO C99，不含厂商头文件，通过 BSP 回调接入。
 - **driver/WM8978_Driver**：WM8978 音频编解码芯片通用驱动，ISO C99，通过 I2C 接口接入。
 - **driver/MAX17048_Driver**：MAX17048/MAX17049 ModelGauge 锂电电量计通用驱动，I2C 接口（7 位地址 0x36，16 位寄存器），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
