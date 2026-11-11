@@ -24,7 +24,7 @@ Public_Library/
     ├── mcu-code-style/        # MCU C 代码规范检查与自动修复
     ├── mcu-universal-driver/  # 通用驱动框架约束（架构 + 代码规范）
     ├── fmd-code-driver/       # FMD 辉芒微 8 位 MCU C 语言编码规范
-    └── mimo-editorial-web-style/     # 编辑排版风格网页生成技能
+    └── mcu-architecture-skill/ # 通用 MCU 裸机固件架构设计规范与参考实现
 ```
 
 ## 组件说明
@@ -33,8 +33,8 @@ Public_Library/
 - **middleware/usb_pd_driver**：纯 C99、多实例、非阻塞的 USB PD 2.0 中间层，支持 Sink/Source/DRP、20V/3A 固定 PDO 和 PR_Swap；提供异步移植契约及模板，尚未完成硬件联调。
 - **driver/AW32257_Driver**：AW32257 充电/升压芯片通用驱动，ISO C99，不含厂商头文件，通过 BSP 回调接入。
 - **driver/WM8978_Driver**：WM8978 音频编解码芯片通用驱动，ISO C99，通过 I2C 接口接入。
-- **driver/MAX17048_Driver**：MAX17048/MAX17049 ModelGauge 锂电电量计通用驱动，I2C 接口（7 位地址 0x36，16 位寄存器），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
-- **driver/INA219_Driver**：INA219A/B 电流/功率监测芯片通用驱动，I2C 接口（7 位地址 0x40~0x4F，16 位寄存器），默认按 1Ω 采样电阻配置（±320mA 量程 / 10µA 分辨率），纯 C99 定点运算，可多实例，含 CH32 移植示例与 RV32 模拟单测。
+- **driver/MAX17048_Driver**：MAX17048/MAX17049 ModelGauge 锂电电量计通用驱动，I2C 接口（7 位地址 0x36，16 位寄存器），纯 C99 定点运算，可多实例。
+- **driver/INA219_Driver**：INA219A/B 电流/功率监测芯片通用驱动，I2C 接口（7 位地址 0x40~0x4F，16 位寄存器），默认按 1Ω 采样电阻配置（±320mA 量程 / 10µA 分辨率），纯 C99 定点运算，可多实例。
 - **driver/DRV2605L_Driver**：DRV2605L ERM/LRA 触觉电机通用驱动，I2C 接口（7 位地址 0x5A），支持 ROM 波形序列、RTP 实时播放、执行器/库/模式配置与原始寄存器访问，纯 C99、可多实例。
 - **driver/MAX17260_Driver**：MAX17260 1 节锂电 ModelGauge m5 EZ 电量计通用驱动，I2C 接口（7 位地址 0x36/0x0D，16 位寄存器），支持测量/平均/最大最小读取、Model m5 EZ 一站式配置、四组告警窗口与寄存器级原始访问，纯 C99 定点运算，可多实例。
 - **driver/RGB_Driver**：WS2812 类可寻址 RGB LED 通用驱动（RGB/GRB 字节序，HSV 与呼吸/彩虹等效果可裁剪），位时序编码由移植层承担，纯 C99 零平台依赖，可多实例。
@@ -44,6 +44,7 @@ Public_Library/
 - **skills/mcu-code-style**：MCU 嵌入式 C 代码规范检查与自动修复技能，规则与具体芯片无关。
 - **skills/mcu-universal-driver**：跨平台可移植驱动框架约束，覆盖四层架构（应用层 → 驱动核心 → 移植契约 → 移植层）与单片机 C 代码规范，与具体芯片、总线、工具链无关。
 - **skills/fmd-code-driver**：FMD（辉芒微）8 位 MCU 的 C 语言编码规范，覆盖命名、格式、注释、头文件与初始化等约定，与具体工具链无关。
+- **skills/mcu-architecture-skill**：通用 MCU 裸机固件架构设计规范与参考实现，覆盖两轨工程布局、单向分层依赖、时间片 + 事件驱动混合调度、Driver-Port 硬件抽象模型与零阻塞防御式超时；附调度器、环形缓冲与驱动模板。
 
 ## 许可证
 
